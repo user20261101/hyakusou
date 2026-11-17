@@ -30,3 +30,9 @@
 ## 画面 (docs/)
 - `docs/index.html` … Supabaseにつながる本番用の画面(HTML/JSのみ、ビルド不要)。テスト中はGitHub Pagesで公開(Settings → Pages → Branch: main / docs)。本番はCloudflare Pagesの出力ディレクトリに `docs` を指定する。
 - `prototype/index.html` … 一人用の試作版(参考用)。
+
+## 現在の作り(試しの塔 / 2026-11 作り直し)
+- 百層の塔の前に、1人用の「試しの塔」(10階建て・10階に守護者)を作った。紙芝居(導入ストーリー)つき。
+- ルールはシンプルに: 武器7種・盾7種(トルネコ風)、薬草、冒険→拾う→売る→買う。職業・属性・強化は無し。
+- 判定はすべてSupabase側(`engine.trial_explore` など)。画面は `docs/index.html`。
+- 以前の共有の塔(合算ダメージ・ターン処理)は保留中。DBには残しているが、今の画面からは使っていない。
