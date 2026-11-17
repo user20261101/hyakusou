@@ -27,6 +27,6 @@
 3. 結果の報告書(戦利品、レベルアップ、守護者の進み具合、突発イベント)を読む。
 4. 第10層まではチュートリアル。第11層から属性の敵と職業が解禁される。
 
-## 画面 (web/)
-- `web/index.html` … Supabaseにつながる本番用の画面(HTML/JSのみ、ビルド不要)。Cloudflare Pagesの「ビルド出力ディレクトリ」は `web` を指定する。
+## 画面 (docs/)
+- `docs/index.html` … Supabaseにつながる本番用の画面(HTML/JSのみ、ビルド不要)。テスト中はGitHub Pagesで公開(Settings → Pages → Branch: main / docs)。本番はCloudflare Pagesの出力ディレクトリに `docs` を指定する。
 - `prototype/index.html` … 一人用の試作版(参考用)。
