@@ -41,6 +41,19 @@ button:disabled{opacity:.45;cursor:default}
 .bar{height:8px;background:#0c0d12;border-radius:4px;overflow:hidden;border:1px solid var(--line)}
 .bar i{display:block;height:100%;background:var(--gold)}
 .res-clear{color:var(--green)}.res-retreat{color:var(--gold)}.res-faint{color:var(--red)}
+/* 冒険 */
+.hpbar{height:14px;background:#0c0d12;border-radius:7px;overflow:hidden;border:1px solid var(--line)}
+.hpbar i{display:block;height:100%;background:var(--green);transition:width .25s}
+.hpbar.low i{background:var(--red)}
+.hpbar.en i{background:var(--red)}
+.big{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.big button{padding:12px 14px;text-align:left}
+.big button small{display:block;color:var(--dim);font-size:12px}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.acts button{padding:12px 8px}
+.enemy{text-align:center;font-size:18px;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;margin:2px 0 6px}
+.intent{display:inline-block;border:1px solid var(--red);color:var(--red);border-radius:6px;padding:0 8px;font-size:13px;margin-top:6px}
+.chip{display:inline-block;font-size:12px;border:1px solid var(--gold);color:var(--gold);border-radius:12px;padding:0 8px;margin:2px 4px 2px 0}
 /* 紙芝居 */
 #story{position:fixed;inset:0;background:#000;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center}
 #story .frame{width:100%;max-width:560px}
@@ -88,14 +101,16 @@ const SB_KEY = "sb_publishable_8yTYnpCJ8LPEd2ZtRWRj8Q_m_CH87Gn"; // 公開して
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const S = { user: null, p: null, bag: [], defs: null, log: null, view: "town", floor: 1, msg: "", err: false, result: null };
+const S = { user: null, p: null, bag: [], defs: null, log: null, view: "town", floor: 1, msg: "", err: false, result: null, run: null, lines: [] };
 
 /* 表示用の計算(本当の判定はサーバー側) */
 const lvOf = (exp) => 1 + Math.floor(Math.sqrt(Math.max(exp, 0) / 6));
 const maxHp = (lv) => 20 + 6 * lv;
 const nextExp = (lv) => 6 * lv * lv;
 const defOf = (id) => (S.defs.weapons[id] || S.defs.shields[id] || { name: id });
-const itemInfo = (b) => { const d = defOf(b.def_id); return b.kind === "W" ? `攻撃力${d.atk}` : `防御力${d.def}`; };
+const nameOf = (b) => defOf(b.def_id).name + (b.plus > 0 ? `+${b.plus}` : "");
+const itemInfo = (b) => { const d = defOf(b.def_id); return b.kind === "W" ? `攻撃力${d.atk + (b.plus || 0)}` : `防御力${d.def + (b.plus || 0)}`; };
+const dName = (it) => defOf(it.d).name + (it.plus > 0 ? `+${it.plus}` : "");
 
 /* ================= 紙芝居 ================= */
 const NAME = "{name}";
@@ -199,6 +214,8 @@ async function boot() {
   if (error) { alert("読み込みに失敗しました: " + error.message); return; }
   S.defs = defs;
   await loadAll();
+  const { data: rn } = await sb.from("runs").select("state").eq("user_id", S.user.id).maybeSingle();
+  S.run = rn ? rn.state : null;
   if (S.p.story < 1) return playStory(INTRO, async () => { await setStory(1); enterTown(); });
   if (S.p.trial_clear && S.p.story < 2) return playStory(ENDING, async () => { await setStory(2); enterTown(); });
   enterTown();
@@ -230,7 +247,9 @@ function render() {
   const pct = Math.round(((p.exp - 6 * (lv - 1) * (lv - 1)) / (nextExp(lv) - 6 * (lv - 1) * (lv - 1))) * 100);
   $("head").innerHTML = `<div class="card"><div class="row"><b>${esc(p.name)}</b><span class="lv">Lv${lv}</span><span class="tag">HP ${maxHp(lv)}</span><span class="grow"></span><b>${p.gold} G</b></div>
     <div class="bar" style="margin:6px 0"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>
-    <div class="sub">次のレベルまで あと ${nextExp(lv) - p.exp} / 薬草 ${p.herbs}個 / ${w ? esc(defOf(w.def_id).name) : "素手"} ・ ${s ? esc(defOf(s.def_id).name) : "盾なし"}</div></div>`;
+    <div class="sub">次のレベルまで あと ${nextExp(lv) - p.exp} / 薬草 ${p.herbs}個 / ${w ? esc(nameOf(w)) : "素手"} ・ ${s ? esc(nameOf(s)) : "盾なし"}</div></div>`;
+  $("tabs").classList.toggle("hide", !!S.run);
+  if (S.run) return viewRun();
   $("tabs").innerHTML = TABS.map(([k, n]) => `<button data-k="${k}" class="${S.view === k ? "on" : ""}">${n}</button>`).join("");
   $("tabs").querySelectorAll("button").forEach((b) => b.onclick = () => { S.view = b.dataset.k; S.msg = ""; S.result = null; render(); });
   ({ town: viewTown, shop: viewShop, bag: viewBag })[S.view]();
@@ -256,13 +275,7 @@ function viewTown() {
       <div style="margin-top:10px" class="row"><button id="btnOut">ログアウト</button><button id="btnReset">最初からやり直す</button></div>
       <div class="sub">「最初からやり直す」を押すと、このキャラクターのデータが消えて、オープニングからになります。</div></div>`;
   $("view").querySelectorAll(".floors button").forEach((b) => b.onclick = () => { S.floor = +b.dataset.f; render(); });
-  $("go").onclick = async () => {
-    $("go").disabled = true;
-    const { data, error } = await sb.rpc("t_explore", { p_floor: S.floor });
-    if (error) return say(error.message, true);
-    if (!data.ok) return say(data.msg, true);
-    await loadAll(); if (data.result === "clear") S.floor = Math.min(S.p.frontier, S.defs.top); S.result = data; S.msg = ""; render();
-  };
+  $("go").onclick = async () => { $("go").disabled = true; await cmd("start", String(S.floor)); };
   if ($("btnReg")) $("btnReg").onclick = async () => {
     const { error } = await sb.auth.updateUser({ email: $("rgMail").value.trim(), password: $("rgPass").value });
     if (error) return say("登録できませんでした: " + error.message, true);
@@ -277,23 +290,81 @@ function viewTown() {
     location.reload();
   };
 }
-const resLabel = { clear: ["突破!", "res-clear"], retreat: ["撤退", "res-retreat"], faint: ["倒れた…", "res-faint"] };
+const resLabel = { clear: ["踏破!", "res-clear"], return: ["帰還", "res-retreat"], dead: ["倒れた…", "res-faint"], retreat: ["撤退", "res-retreat"], faint: ["倒れた…", "res-faint"] };
 function logSummary(b) {
   const [t, c] = resLabel[b.result] || ["", ""];
-  return `<div class="kv"><b>${b.floor}階</b><span class="${c}">${t}</span><b>経験値</b><span>+${b.exp_gain}${b.lv1 > b.lv0 ? ` <span class="lv">Lv${b.lv0}→${b.lv1}</span>` : ""}</span>
-    <b>お金</b><span>${b.result === "faint" ? `<span class="res-faint">${b.lost_gold}G を失った</span>` : "+" + b.gold_gain + "G"}</span>
-    ${(b.items || []).length || b.herbs_found ? `<b>拾い物</b><span>${(b.items || []).map(esc).join("、")}${b.herbs_found ? " 薬草×" + b.herbs_found : ""}</span>` : ""}</div>`;
+  const dead = b.result === "dead" || b.result === "faint";
+  return `<div class="kv"><b>${b.floor}階</b><span class="${c}">${t}${dead && b.cause ? `(${esc(b.cause)})` : ""}</span><b>経験値</b><span>+${b.exp_gain}${b.lv1 > b.lv0 ? ` <span class="lv">Lv${b.lv0}→${b.lv1}</span>` : ""}</span>
+    <b>お金</b><span>${dead ? `<span class="res-faint">${b.lost_gold}G を失った</span>` : "+" + b.gold_gain + "G"}</span>
+    ${(b.items || []).length ? `<b>持ち帰り</b><span>${(b.items || []).map(esc).join("、")}</span>` : ""}
+    ${dead && b.lost_items ? `<b>失った物</b><span class="res-faint">拾い物 ${b.lost_items}個</span>` : ""}</div>`;
 }
 function viewResult() {
   const b = S.result;
   $("view").innerHTML = `<div class="card"><h2>${b.floor}階の冒険</h2>${logSummary(b)}
-    <div class="log">${(b.lines || []).map((l) => `<div>${esc(l)}</div>`).join("")}</div>
+    <div class="log">${(b.recap || b.lines || []).map((l) => `<div>${esc(l)}</div>`).join("")}</div>
     <div style="margin-top:12px"><button class="primary" id="back">${b.first_clear ? "つづき" : "町へ戻る"}</button></div></div>`;
   $("back").onclick = () => {
     S.result = null;
     if (b.first_clear) return playStory(ENDING, async () => { await setStory(2); enterTown(); });
     render();
   };
+}
+
+/* ================= 冒険(対話式) ================= */
+async function cmd(c, arg) {
+  const { data, error } = await sb.rpc("t_run", { p_cmd: c, p_arg: arg == null ? null : String(arg) });
+  if (error) { S.run ? (S.msg = error.message, S.err = true, render()) : say(error.message, true); return; }
+  if (!data.ok) { S.msg = data.msg; S.err = true; render(); return; }
+  S.msg = ""; S.err = false;
+  if (data.ended) {
+    S.run = null; S.lines = data.lines || [];
+    await loadAll();
+    if (data.body.result === "clear") S.floor = S.defs.top;
+    S.result = data.body; S.view = "town"; render(); return;
+  }
+  S.run = data.state; S.lines = data.lines || []; render();
+}
+const PERK_NAME = (id) => (S.defs.perks[id] || {}).name || id;
+function viewRun() {
+  const r = S.run, p = S.p;
+  const hpPct = Math.max(0, Math.round((r.hp / r.maxhp) * 100));
+  const w = S.bag.find((x) => x.id === p.weapon_id), sh = S.bag.find((x) => x.id === p.shield_id);
+  let main = "";
+  if (r.phase === "choose") {
+    main = `<div class="sub">${r.fl === S.defs.top ? "最上階" : r.fl + "階"} ― 部屋 ${r.room + 1}/${r.rpf}。どの道へ進む?</div>
+      <div class="big">${r.choices.map((c, i) => `<button data-c="${i}">${esc(c.label)}<small>${esc(c.hint)}</small></button>`).join("")}</div>`;
+  } else if (r.phase === "fight") {
+    const e = r.enemy, ep = Math.max(0, Math.round((e.hp / e.mhp) * 100));
+    const IN = { atk: "通常攻撃", heavy: "強攻撃(防御で受け流せる)", breath: "炎のブレス(防御で受け流せる)", poison: "毒の牙" };
+    main = `<div class="enemy">${esc(e.name)}</div><div class="hpbar en"><i style="width:${ep}%"></i></div>
+      <div class="sub" style="text-align:center">HP ${e.hp}/${e.mhp}</div>
+      <div style="text-align:center"><span class="intent">次: ${IN[r.intent] || "攻撃"}</span>${r.counter ? ' <span class="chip">反撃の好機(次の攻撃×1.5)</span>' : ""}</div>
+      <div class="acts"><button class="primary" data-a="attack">攻撃</button><button data-a="power">強打(外れることも)</button>
+      <button data-a="guard">防御</button><button data-a="herb" ${r.herbs <= 0 ? "disabled" : ""}>薬草(${r.herbs})</button>
+      <button data-a="auto" class="grow">おまかせ(自動で戦う)</button><button data-a="flee" ${e.boss ? "disabled" : ""}>逃げる</button></div>`;
+  } else if (r.phase === "landing") {
+    main = `<div class="sub">${r.fl}階の踊り場。ひと息つける。</div>`;
+    if (r.offer.length) main += `<div style="margin-top:8px"><b>加護をひとつ授かる</b></div><div class="big">${r.offer.map((id) => `<button data-p="${id}">${esc(PERK_NAME(id))}<small>${esc((S.defs.perks[id] || {}).desc || "")}</small></button>`).join("")}</div>`;
+    else main += `<div class="big"><button class="primary" data-d="1">${r.fl + 1}階へ下りる<small>さらに深く。持ち物を失うリスクも増える。</small></button>
+      <button data-rt="1">ここで帰る<small>集めた物をすべて持ち帰る。</small></button>
+      <button data-a="herb" ${r.herbs <= 0 || r.hp >= r.maxhp ? "disabled" : ""}>薬草を使う(${r.herbs})</button></div>`;
+  }
+  const perks = Object.entries(r.perks || {}).map(([k, v]) => `<span class="chip">${esc(PERK_NAME(k))}${v > 1 ? "×" + v : ""}</span>`).join("");
+  $("view").innerHTML = `<div class="card"><div class="row"><b>${r.fl}階</b><span class="lv">Lv${r.lv}</span><span class="grow"></span><span class="dim">薬草 ${r.herbs}</span></div>
+      <div class="hpbar ${hpPct < 30 ? "low" : ""}" style="margin-top:6px"><i style="width:${hpPct}%"></i></div>
+      <div class="sub">HP ${r.hp}/${r.maxhp} ・ ${w ? esc(nameOf(w)) : "素手"} / ${sh ? esc(nameOf(sh)) : "盾なし"}</div>
+      <div class="sub">持ち帰り候補: ${r.lg}G${r.litems.length ? " ・ " + r.litems.map((i) => esc(dName(i))).join("、") : ""} ・ 倒れると全部失う</div>
+      ${perks ? `<div style="margin-top:4px">${perks}</div>` : ""}</div>
+    <div class="card">${main}${msgHtml()}</div>
+    <div class="log">${(r.log || []).slice(-8).map((l) => `<div>${esc(l)}</div>`).join("")}</div>`;
+  const v = $("view");
+  const lock = (fn) => async (ev) => { v.querySelectorAll("button").forEach((b) => b.disabled = true); await fn(ev); };
+  v.querySelectorAll("[data-c]").forEach((b) => b.onclick = lock(() => cmd("choose", b.dataset.c)));
+  v.querySelectorAll("[data-a]").forEach((b) => b.onclick = lock(() => cmd(b.dataset.a)));
+  v.querySelectorAll("[data-p]").forEach((b) => b.onclick = lock(() => cmd("perk", b.dataset.p)));
+  v.querySelectorAll("[data-d]").forEach((b) => b.onclick = lock(() => cmd("descend")));
+  v.querySelectorAll("[data-rt]").forEach((b) => b.onclick = lock(() => cmd("return")));
 }
 
 function viewShop() {
@@ -305,7 +376,7 @@ function viewShop() {
       ${buyable.map((o) => `<div class="item"><div class="nm">${esc(o.x.name)} <span class="tag">${o.k === "W" ? "攻撃力" + o.x.atk : "防御力" + o.x.def}</span><div class="sub">${esc(o.x.note)}</div></div><b>${o.x.price}G</b><button data-buy="${o.id}" ${p.gold < o.x.price ? "disabled" : ""}>買う</button></div>`).join("")}</div>
     <div class="card"><h2>売る</h2>
       ${p.herbs > 0 ? `<div class="item"><div class="nm">薬草 ×${p.herbs}</div><b>${d.herb.sell}G</b><button data-herb="1">売る</button></div>` : ""}
-      ${S.bag.map((b) => `<div class="item"><div class="nm">${esc(defOf(b.def_id).name)} <span class="tag">${itemInfo(b)}</span>${eq.has(b.id) ? ' <span class="tag">装備中</span>' : ""}</div><b>${defOf(b.def_id).sell}G</b><button data-sell="${b.id}" ${eq.has(b.id) ? "disabled" : ""}>売る</button></div>`).join("") || '<div class="dim">売れる物がありません。</div>'}</div>`;
+      ${S.bag.map((b) => `<div class="item"><div class="nm">${esc(nameOf(b))} <span class="tag">${itemInfo(b)}</span>${eq.has(b.id) ? ' <span class="tag">装備中</span>' : ""}</div><b>${Math.round(defOf(b.def_id).sell * (1 + 0.35 * (b.plus || 0)))}G</b><button data-sell="${b.id}" ${eq.has(b.id) ? "disabled" : ""}>売る</button></div>`).join("") || '<div class="dim">売れる物がありません。</div>'}</div>`;
   const run = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) return say(error.message, true); await loadAll(); say(data.msg, !data.ok); };
   $("view").querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => run("t_buy", { p_def: b.dataset.buy }));
   $("view").querySelectorAll("[data-sell]").forEach((b) => b.onclick = () => run("t_sell", { p_item: b.dataset.sell }));
@@ -315,7 +386,7 @@ function viewShop() {
 function viewBag() {
   const p = S.p;
   const line = (b) => { const on = b.id === p.weapon_id || b.id === p.shield_id;
-    return `<div class="item"><div class="nm">${esc(defOf(b.def_id).name)} <span class="tag">${itemInfo(b)}</span>${on ? ' <span class="tag">装備中</span>' : ""}<div class="sub">${esc(defOf(b.def_id).note)}</div></div>
+    return `<div class="item"><div class="nm">${esc(nameOf(b))} <span class="tag">${itemInfo(b)}</span>${on ? ' <span class="tag">装備中</span>' : ""}<div class="sub">${esc(defOf(b.def_id).note)}</div></div>
       <button data-eq="${b.id}" ${on ? "disabled" : ""}>装備</button></div>`; };
   $("view").innerHTML = `<div class="card"><h2>持ち物 (${S.bag.length}/${S.defs.bag_max}) ・ 薬草 ${p.herbs}個</h2>${msgHtml()}
       <div class="sub">冒険から戻ると、いちばん強い武器と盾が自動で装備されます。</div></div>
