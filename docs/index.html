@@ -250,7 +250,8 @@ function viewTown() {
       ${S.user.is_anonymous ? `<div class="dim">ゲスト中です。ブラウザやスマホを変えても続けるには、IDを登録してください。</div>
       <div class="row" style="margin-top:6px"><input id="rgMail" type="email" placeholder="メールアドレス" class="grow"><input id="rgPass" type="password" placeholder="パスワード(8文字以上)" class="grow"><button id="btnReg">登録</button></div>`
       : `<div class="sub">ID登録済み: ${esc(S.user.email)}</div>`}
-      <div style="margin-top:10px"><button id="btnOut">ログアウト</button></div></div>`;
+      <div style="margin-top:10px" class="row"><button id="btnOut">ログアウト</button><button id="btnReset">最初からやり直す</button></div>
+      <div class="sub">「最初からやり直す」を押すと、このキャラクターのデータが消えて、オープニングからになります。</div></div>`;
   $("view").querySelectorAll(".floors button").forEach((b) => b.onclick = () => { S.floor = +b.dataset.f; render(); });
   $("go").onclick = async () => {
     $("go").disabled = true;
@@ -266,6 +267,12 @@ function viewTown() {
     say("確認メールを送りました。メール内のリンクを開くと登録が完了します。");
   };
   $("btnOut").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+  $("btnReset").onclick = async () => {
+    if (!confirm("このキャラクターのデータを消して、最初からやり直します。よろしいですか?")) return;
+    const { error } = await sb.rpc("t_reset");
+    if (error) return say("やり直せませんでした: " + error.message, true);
+    location.reload();
+  };
 }
 const resLabel = { clear: ["突破!", "res-clear"], retreat: ["撤退", "res-retreat"], faint: ["倒れた…", "res-faint"] };
 function logSummary(b) {
