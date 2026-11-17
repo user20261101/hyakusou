@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>百層週報</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* layout idea: a weekly newspaper. main column = this week's paper and the stage you are playing; side column = tower map and your notebook. */
+:root{
+  --paper:#e7e9e4; --paper2:#d9dcd5; --ink:#141a20; --muted:#56616b; --rule:#141a20;
+  --accent:#b3261e; --on-accent:#ffffff;
+  --fire:#c4572b; --water:#2a6aa3; --thunder:#a8801a; --wind:#3b8567;
+  --display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#12171b; --paper2:#1c242a; --ink:#e4e8e3; --muted:#98a3ac; --rule:#e4e8e3;
+    --accent:#e2574c; --on-accent:#12171b;
+    --fire:#e07a4d; --water:#5b9ad4; --thunder:#d8aa3a; --wind:#5bb18a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#12171b; --paper2:#1c242a; --ink:#e4e8e3; --muted:#98a3ac; --rule:#e4e8e3;
+  --accent:#e2574c; --on-accent:#12171b;
+  --fire:#e07a4d; --water:#5b9ad4; --thunder:#d8aa3a; --wind:#5bb18a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.7;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 64px}
+.mast{border-top:5px solid var(--rule);border-bottom:1px solid var(--rule);padding:10px 0 14px;margin-bottom:24px}
+.mast-top{display:flex;justify-content:space-between;gap:4px 16px;flex-wrap:wrap;font-size:12px;letter-spacing:.08em;color:var(--muted)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(46px,13vw,88px);line-height:1.05;margin:6px 0 4px;letter-spacing:.08em;text-wrap:balance}
+.tag{margin:0;color:var(--muted);font-size:13px}
+.cols{display:grid;gap:32px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:880px){.cols{grid-template-columns:minmax(0,1fr) 340px}}
+section{margin-bottom:30px}
+h2{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:.22em;margin:0 0 12px;padding-bottom:5px;border-bottom:2px solid var(--rule)}
+.head{font-family:var(--display);font-weight:800;font-size:clamp(21px,4.4vw,28px);line-height:1.35;margin:0 0 14px;text-wrap:balance}
+.front{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px 20px;margin-bottom:14px}
+.k{font-size:11px;letter-spacing:.14em;color:var(--muted)}
+.v{font-family:var(--display);font-weight:800;font-size:22px;line-height:1.35}
+.s{font-size:12.5px;color:var(--muted);line-height:1.55}
+.gl{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:4px}
+.bar{height:12px;border:1px solid var(--rule);background:var(--paper2)}
+.bar>i{display:block;height:100%;background:var(--ink);transition:width .45s}
+.bar.boss>i,.bar.foe>i{background:var(--accent)}
+.bar.big{height:16px}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+.rr{font-weight:700}.rr1{color:var(--wind)}.rr2{color:var(--water)}.rr3{color:var(--thunder);text-shadow:0 0 .5px currentColor}
+.loot{border:1.5px solid var(--ink);padding:8px 10px;margin:8px 0;background:color-mix(in srgb,var(--thunder) 10%,transparent)}
+.loot .k{font-weight:700;margin-bottom:4px}.loot ul{margin:0;padding:0;list-style:none;font-size:14px}.loot li{padding:3px 0}.loot small{display:block;color:var(--muted);font-size:12px}
+.el{display:inline-grid;place-items:center;width:1.5em;height:1.5em;border-radius:50%;background:var(--c);color:var(--paper);font-size:.8em;font-weight:700;vertical-align:.08em}
+.el.sq{border-radius:3px;background:var(--ink)}
+.opts{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.opts.tight{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+.opt{text-align:left;background:transparent;border:1px solid var(--rule);padding:9px 12px;cursor:pointer;border-radius:2px;line-height:1.5}
+.opt small{display:block;opacity:.78;font-size:12px}
+.opt[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.opt[aria-pressed="true"] .el{outline:1px solid var(--paper)}
+.opt:disabled{opacity:.38;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.go{background:var(--accent);color:var(--on-accent);border:0;padding:12px 20px;font-weight:700;letter-spacing:.08em;cursor:pointer;border-radius:2px}
+.go:disabled{opacity:.4;cursor:not-allowed}
+.ghost{background:transparent;border:1px solid var(--rule);padding:9px 16px;cursor:pointer;border-radius:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.grp{margin-bottom:14px}
+.grp>.k{margin-bottom:6px}
+.ap{display:flex;align-items:center;gap:6px;margin-bottom:12px;font-size:13px;flex-wrap:wrap}
+.ap i{width:16px;height:16px;border:2px solid var(--ink);border-radius:50%}
+.ap i.on{background:var(--accent);border-color:var(--accent)}
+.gold{font-family:var(--display);font-weight:800}
+.door{display:grid;gap:4px}
+.door b{font-family:var(--display);font-size:17px}
+.stamp{display:inline-block;transform:rotate(-6deg);border:3px solid var(--accent);color:var(--accent);padding:0 12px;font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:.2em;margin-bottom:10px}
+.msg{margin:0 0 14px;padding:10px 14px;border-left:4px solid var(--accent);background:var(--paper2)}
+.msg p{margin:0 0 3px;font-size:14px}
+.foe-box{border:2px solid var(--rule);padding:12px 14px;margin-bottom:14px}
+.foe-box .t{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.intent{margin:8px 0 0;font-size:14px}
+.intent b{color:var(--accent);font-family:var(--display);font-size:18px}
+.log{font-size:13px;color:var(--muted);margin:0 0 12px;padding:0;list-style:none}
+.log li{padding:1px 0}
+.log li:first-child{color:var(--ink)}
+.rows{margin:0 0 16px;padding:0;list-style:none}
+.rows li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dotted var(--muted);padding:4px 0;font-size:14px}
+.rows li b{font-weight:700;text-align:right}
+.tower{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;max-width:340px}
+.cell{aspect-ratio:1;border:1px solid color-mix(in srgb,var(--ink) 28%,transparent);display:grid;place-items:center;font-size:10px;line-height:1;color:var(--muted)}
+.cell.done{background:var(--ink);color:var(--paper)}
+.cell.boss{border-color:var(--accent);border-width:2px;color:var(--accent);font-weight:700}
+.cell.boss.done{color:var(--paper);background:var(--accent)}
+.cell.now{background:linear-gradient(to top,var(--accent) var(--g),transparent var(--g));outline:2px solid var(--accent);outline-offset:1px;color:var(--ink);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:8px}
+.sw{display:inline-block;width:.9em;height:.9em;vertical-align:-.1em;margin-right:4px;border:1px solid var(--ink)}
+.small{font-size:12.5px;color:var(--muted)}
+.kv{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13.5px;margin-bottom:8px}
+.wlist{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
+.wlist li{padding:3px 0;border-bottom:1px dotted var(--muted)}
+.chron{list-style:none;margin:0;padding:0;font-size:13.5px}
+.chron li{display:grid;grid-template-columns:3.4em 1fr;gap:8px;padding:4px 0;border-bottom:1px dotted var(--muted)}
+.chron b{font-family:var(--display)}
+.why{font-size:12.5px;color:var(--accent);margin:0 0 8px}
+.picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.picker .fl{font-family:var(--display);font-weight:800;font-size:28px;min-width:4.2em;text-align:center}
+.rate{display:inline-block;padding:0 10px;border:2px solid var(--rule);font-weight:700;font-size:13px}
+.rate.ok{border-color:var(--wind);color:var(--wind)}
+.rate.mid{border-color:var(--water);color:var(--water)}
+.rate.warn{border-color:var(--thunder);color:var(--thunder)}
+.rate.bad{border-color:var(--accent);color:var(--accent)}
+@media (prefers-reduced-motion:reduce){.bar>i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <div class="mast-top"><span id="edition"></span><span>戦う、稼ぐ、装備を買う、さらに上へ</span></div>
+    <h1>百層週報</h1>
+    <p class="tag">自分の力で登れる階層まで登り、稼いだ金で装備を整えてさらに上へ。みんなの前線が進むと、街の店の品揃えも増えます。</p>
+  </header>
+  <div class="cols">
+    <main>
+      <section id="paper"></section>
+      <section id="stage"></section>
+    </main>
+    <aside>
+      <section id="tower"></section>
+      <section id="book"></section>
+      <section id="chron"></section>
+    </aside>
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const EL=['火','水','雷','風'];
+const ELV={火:'var(--fire)',水:'var(--water)',雷:'var(--thunder)',風:'var(--wind)','無':'var(--muted)'};
+const BEATS={火:'風',風:'雷',雷:'水',水:'火'};
+const weakOf=e=>EL.find(x=>BEATS[x]===e);
+const ELFLOOR=10; /* 第11層から属性敵が現れ、属性装備が入荷する */
+const elOn=()=>S.floor>ELFLOOR;
+const BIOME={無:'始まりの草原',火:'溶岩の回廊',水:'水没した大聖堂',雷:'雷雲の吹き抜け',風:'風穴の迷宮'};
+const ENM={無:['草原の狼','はぐれ兵士','洞窟コウモリ'],火:['溶岩トカゲ','灰の亡者','炎羽の鳥'],水:['潮の蛇','深海の騎士','水妖'],雷:['雷獣','帯電甲冑','閃光蜂'],風:['風刃の鷲','旋風の幽霊','嵐狼']};
+const BOSS={10:['鉄爪の番犬 ガルム','雷'],20:['蒼鱗の竜母 ネレイス','水'],30:['灰燼の王 ヴァルカ','火'],40:['嵐翼の主 ゼフィラ','風'],50:['千眼の機巧 アルゴス','雷'],60:['沈んだ女王 ミレイア','水'],70:['業火の鍛冶神 ヘパ','火'],80:['天穹の獣 ルフ','風'],90:['百層の門番 ゼロ','雷'],100:['塔の主 アウル','火']};
+const TR={sharp:{n:'鋭利',d:'威力+3'},twin:{n:'連撃',d:'1戦闘に2回使える'},drain:{n:'吸血',d:'与ダメージの25%回復'},pierce:{n:'貫通',d:'弱点×1.8、耐性を無視'},crit:{n:'会心',d:'25%の確率でダメージ2倍'},plunder:{n:'略奪',d:'持ち込むと戦利品の金+20%'}};
+const PRE={sharp:'鋭き',twin:'双牙の',drain:'血吸いの',pierce:'穿つ',crit:'会心の',plunder:'略奪者の'};
+const RAR={1:'良品',2:'希少',3:'秘宝'};
+const TRK=Object.keys(TR);
+const ADJ={火:'焔',水:'潮',雷:'雷',風:'疾風'};
+const TYPE=['剣','槍','斧','弓','杖','短剣'];
+const DOOR={battle:['戦','魔物の気配がする'],elite:['精','強い気配。倒せば報酬が大きい'],chest:['宝','宝箱の部屋'],spring:['泉','水の音が聞こえる'],rift:['裂','床に裂け目がある'],shrine:['祠','小さな祠がある'],guard:['番','この階層の番人が待つ'],boss:['主','守護者の間']};
+const MAT=['鉄','鋼','青銅','銀','魔銀','白銀','黒鉄','星鉄','竜骨','神代'];
+const matName=t=>MAT[t-1]||`第${t}世代`;
+const WTYPE={無:'剣',火:'斧',水:'槍',雷:'杖',風:'弓'};
+const ATYPE={無:'鎧',火:'耐火の衣',水:'耐水の衣',雷:'耐雷の衣',風:'耐風の衣'};
+const ACC={hp:['守りの指輪',t=>`最大HP+${8*t}`],gold:['商人の護符',t=>`戦利品の金+${10+5*t}%`],hunt:['狩人の印',t=>`与ダメージ+${3+2*t}%`],heal:['癒しの香炉',t=>`薬の回復量+${30+10*t}%`]};
+const JOBS={
+  war:{n:'戦士',d:r=>`最大HP+${15*r}%、防御+${r}。受け止めて戦う`},
+  hun:{n:'狩人',d:r=>`弱点を突いたときの倍率が1.4→${(1.4+0.15*r).toFixed(2)}。属性の読み合い向き`},
+  mag:{n:'魔術師',d:r=>`属性武器のダメージ+${9*r}%。属性なしの武器は強化されない`},
+  mer:{n:'商人',d:r=>`戦利品の金+${15*r}%、装備ドロップ率+${15*r}%`},
+  pri:{n:'僧侶',d:r=>`薬の回復+${25*r}%、戦闘に勝つたびHPが最大の${3*r}%回復`}
+};
+const jobUnlocked=()=>S.floor>ELFLOOR;
+const jobRank=()=>1+Math.floor(Math.max(0,lv()-10)/10);
+const jobIs=k=>S.me.job===k&&jobUnlocked()?jobRank():0;
+const rnd=Math.random;
+const ri=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const chip=e=>`<span class="el" style="--c:${ELV[e]}">${e}</span>`;
+const rankOf=p=>p>=80?'大名工':p>=30?'名工':p>=8?'一人前':'見習い鍛冶';
+let S=null;
+
+/* ---------- prices and tiers ---------- */
+const tierNow=()=>1+Math.floor((S.floor-1)/5);
+const wPow=t=>10+Math.round(3.5*(t-1));
+const prem=t=>t>tierNow()?2:1;
+const wPrice=(t,el)=>Math.round(60*Math.pow(t,1.5)*(el==='無'?0.8:1)*prem(t));
+const aDef=(t,el)=>Math.round(1.2*t)+(el==='無'?1:0);
+const aPrice=t=>Math.round(50*Math.pow(t,1.5)*prem(t));
+const cPrice=t=>Math.round(70*Math.pow(t,1.5)*prem(t));
+const POTION=25;
+const RW=3; /* 1ターン1探索なので、報酬は旧3回分を1回に集約 */
+
+/* ---------- player ---------- */
+const lv=()=>1+Math.floor(Math.sqrt(S.me.exp/20));
+const curArmor=()=>S.me.armors.find(a=>a.id===S.me.armor)||S.me.armors[0];
+const curAcc=()=>S.me.accs.find(a=>a.id===S.me.acc)||null;
+const accIs=k=>{const a=curAcc();return a&&a.kind===k?a.t:0};
+const maxHp=()=>30+5*(lv()-1)+(accIs('hp')?8*accIs('hp'):0)+(curArmor().hp||0)+(jobIs('war')?Math.round((30+5*(lv()-1))*0.15*jobIs('war')):0);
+const nextExp=()=>Math.pow(lv(),2)*20;
+const goldMul=()=>1+(accIs('gold')?(10+5*accIs('gold'))/100:0)+(jobIs('mer')?0.15*jobIs('mer'):0);
+const huntMul=()=>1+(accIs('hunt')?(3+2*accIs('hunt'))/100:0);
+const healAmt=()=>Math.round((12+lv()*2)*(1+(accIs('heal')?(30+10*accIs('heal'))/100:0)+(jobIs('pri')?0.25*jobIs('pri'):0)));
+
+function rollEnemy(st){
+  const f=st.floor;
+  const el=BOSS[f]?BOSS[f][1]:st.nextEl;
+  st.nextEl=EL[ri(0,3)];
+  return BOSS[f]?{el,boss:true,name:BOSS[f][0]}:{el,boss:false,name:BIOME[el]};
+}
+const floorEl=f=>f<=ELFLOOR?'無':BOSS[f]?BOSS[f][1]:EL[(f*3+Math.floor(f/5))%4];
+function setEnemy(f){const b=!!BOSS[f]&&f===S.floor;S.enemy={el:floorEl(f),boss:b,name:b?BOSS[f][0]:BIOME[floorEl(f)]}}
+function newWorld(){
+  const st={policy:{mode:'push',floor:1,stance:'std',dives:3},report:null,week:1,floor:1,gauge:0,ap:6,view:'home',wc:1,finished:false,weekGain:0,rumor:false,
+    nextEl:EL[ri(0,3)],enemy:null,dive:null,last:null,prep:[],diveFloor:1,
+    sm:{tab:'new',el:'火',dest:'self',wid:null,msg:''},
+    shop:{tab:'weapon',msg:''},
+    headline:'塔の扉が開いた。誰もまだ最上層を見ていない',
+    timeline:[{w:1,t:'第1層が解放された。'}],
+    me:{ore:6,gold:60,core:{火:1,水:1,雷:1,風:1},potions:2,exp:0,pts:0,titles:[],dives:0,best:0,bossPart:false,
+      armors:[{id:'a1',name:'装備なし',el:'無',def:0,t:0,plus:0}],armor:'a1',accs:[],acc:null,
+      weapons:[
+        ]}};
+  st.enemy=rollEnemy(st);
+  return st;
+}
+
+/* ---------- combat math ---------- */
+function calc(w,E){
+  const pierce=w.trait==='pierce';
+  const m=w.el==='無'?1:(w.el===weakOf(E)?(pierce?1.8:1.4+0.15*jobIs('hun')):(w.el===E?(pierce?1:0.7):1));
+  const p=w.power+(w.trait==='sharp'?3:0)+(lv()-1);
+  const jm=w.el!=='無'?1+0.12*jobIs('mag'):1;
+  const boost=S.dive&&S.dive.boost?1.3:1;
+  return {dmg:Math.max(1,Math.round(p*m*boost*huntMul()*jm)),m};
+}
+const mTxt=m=>m>1?`弱点 ×${m}`:m<1?'効きにくい ×0.7':'等倍';
+const wName=w=>`${w.rar?`<span class="rr rr${w.rar}">【${RAR[w.rar]}】</span>`:''}${w.name}${w.plus?` +${w.plus}`:''}`;
+const wTrait=w=>w.trait?`【${TR[w.trait].n}】`:'';
+const inc=(e,raw)=>{const a=curArmor();return Math.max(1,Math.round(raw*(a.el===e.el&&a.el!=='無'?0.75:1))-a.def-jobIs('war'))};
+
+function rollIntent(e,prev){
+  if(prev&&prev.type==='charge'){const d=inc(e,e.dmg*2.4);return {type:'release',dmg:d,label:`解放 ${d}ダメージ`}}
+  const r=rnd();
+  if(r<0.55){const d=inc(e,e.dmg*(0.9+rnd()*0.2));return {type:'normal',dmg:d,label:`通常攻撃 ${d}ダメージ`}}
+  if(r<0.82){const d=inc(e,e.dmg*2.0);return {type:'heavy',dmg:d,label:`重撃 ${d}ダメージ`}}
+  return {type:'charge',dmg:0,label:'力を溜めている(次のターンは大技)'};
+}
+/* danger rating for a floor: estimates how many fights' worth of HP you have versus what a full dive costs */
+function rawRatio(f){
+  const es=enemyStat(f),E=S.enemy.el;
+  const dm=S.me.weapons.map(w=>calc(w,E).dmg).sort((a,b)=>b-a).slice(0,3);
+  const bare=Math.max(1,Math.round((4+lv())*huntMul()));
+  let rounds=0,sum=0;
+  for(let i=0;i<60&&sum<es.hp;i++){sum+=i<dm.length?dm[i]:bare;rounds++}
+  const per=Math.max(1,es.dmg*1.3-curArmor().def);
+  const cost=rounds*per*8.35;
+  return (maxHp()+S.me.potions*healAmt()*0.7)/cost;
+}
+function rating(f){
+  const r=rawRatio(f);
+  return r>=RT[0]?['安全','ok']:r>=RT[1]?['ふつう','mid']:r>=RT[2]?['危険','warn']:['無謀','bad'];
+}
+const RT=[1.3,0.9,0.6];
+
+/* ---------- dive ---------- */
+function twoRooms(i){
+  const pool=[['battle',40],['chest',16],['rift',9],['shrine',9]];
+  if(i>=1)pool.push(['spring',12]);
+  if(i>=2)pool.push(['elite',14]);
+  const pick=ex=>{const p=pool.filter(x=>x[0]!==ex);let t=p.reduce((a,x)=>a+x[1],0)*rnd();for(const x of p){t-=x[1];if(t<=0)return x[0]}return p[0][0]};
+  const a=pick(null),b=pick(a);
+  return [{t:a},{t:b}];
+}
+function startDive(){
+  S.ap-=2;
+  const f=clamp(S.diveFloor,1,S.floor);
+  const plan=[];for(let i=0;i<5;i++)plan.push(twoRooms(i));
+  plan.push([{t:(f===S.floor&&S.enemy.boss)?'boss':'guard'}]);
+  S.dive={floor:f,step:0,plan,hp:maxHp(),loadout:S.prep.slice(),loot:{ore:0,gold:0,core:{火:0,水:0,雷:0,風:0}},drops:[],exp:0,score:0,boost:false,
+    phase:'choose',msg:[`第${f}層の入口に立った。`],fight:null,ev:null,bossDealt:0,bossMax:0,result:null};
+  S.view='dive';
+}
+function enterRoom(room){
+  const d=S.dive,t=room.t;
+  d.step++;d.score+=1;
+  if(['battle','elite','guard','boss'].includes(t))startFight(t);
+  else{d.ev=t;d.phase='event';d.msg=[]}
+}
+const HPK=3.8,DMK=1.05;
+const EASE=[0,.42,.46,.5,.55,.6,.66,.73,.8,.88,.96];/* 第10層までは敵をやわらげ、サクサク進める */
+function enemyStat(f){const ef=f<=10?EASE[f]:clamp(0.62+0.08*f,0.62,1);return {hp:(18+f*HPK)*ef,dmg:(4+f*DMK)*ef}}
+function startFight(kind){
+  const d=S.dive,f=d.floor;
+  const el=(kind==='boss'||S.enemy.el==='無')?S.enemy.el:(rnd()<0.7?S.enemy.el:EL[ri(0,3)]);
+  const es=enemyStat(f),base=es.hp,dm=es.dmg;
+  const pick=ENM[el][ri(0,2)];
+  let hp,dmg,name;
+  if(kind==='battle'){hp=base;dmg=dm;name=pick}
+  else if(kind==='elite'){hp=base*1.8;dmg=dm*1.25;name='精鋭 '+pick}
+  else if(kind==='guard'){hp=base*2.3;dmg=dm*1.35;name='番人 '+pick}
+  else{hp=60+f*2.4;dmg=dm*1.5;name=S.enemy.name}
+  hp=Math.round(hp*(0.92+rnd()*0.16));
+  const e={name,el,hp,max:hp,dmg,kind};
+  if(kind==='boss')d.bossMax=hp;
+  d.fight={e,used:{},defending:false,dealt:0,log:[`${name}があらわれた。`],intent:rollIntent(e,null)};
+  d.phase='fight';
+}
+function playerAct(kind,wid){
+  const d=S.dive,f=d.fight,e=f.e;
+  f.defending=false;
+  if(kind==='atk'||kind==='bare'){
+    let dmg,label;
+    if(kind==='bare'){dmg=Math.round((4+lv())*huntMul());label='素手で殴った'}
+    else{const w=S.me.weapons.find(x=>x.id===wid);const c=calc(w,e.el);dmg=c.dmg;f.used[wid]=(f.used[wid]||0)+1;
+      label=`${wName(w)}で攻撃`+(c.m>1?'(弱点!)':c.m<1?'(効きにくい)':'');
+      if(w.trait==='drain'){const h=Math.max(1,Math.round(dmg*0.25));d.hp=Math.min(maxHp(),d.hp+h);label+=`、HP+${h}`}}
+    if(kind==='atk'){const w0=S.me.weapons.find(x=>x.id===wid);if(w0&&w0.trait==='crit'&&rnd()<0.25){dmg*=2;label+='、会心の一撃!'}}
+    e.hp-=dmg;f.dealt+=dmg;if(e.kind==='boss')d.bossDealt+=dmg;
+    f.log.unshift(`${label}。${dmg}ダメージ。`);
+  }else if(kind==='def'){f.defending=true;f.log.unshift('身を固めた。次の攻撃を大きく減らす。')}
+  else if(kind==='potion'){
+    const h=healAmt();S.me.potions--;d.hp=Math.min(maxHp(),d.hp+h);f.log.unshift(`薬を飲んだ。HP+${h}。`);
+  }
+  if(e.hp<=0){winFight();return}
+  const it=f.intent;let dmg=it.dmg;
+  if(dmg>0){
+    if(f.defending)dmg=Math.max(1,Math.round(dmg*0.3));
+    d.hp-=dmg;f.log.unshift(`${e.name}の${it.type==='release'?'大技':it.type==='heavy'?'重撃':'攻撃'}。${dmg}ダメージ${f.defending?'(防御で軽減)':''}。`);
+  }else f.log.unshift(`${e.name}は力を溜めている。`);
+  if(d.hp<=0){d.hp=0;finishDive('faint');return}
+  f.intent=rollIntent(e,it);
+}
+/* ---------- loot drops ---------- */
+const DROP={battle:.12,elite:.45,guard:.8,chest:.4};
+const RARW={battle:[75,22,3],elite:[55,35,10],guard:[48,40,12],chest:[50,38,12]};
+function rollRar(k){const w=RARW[k]||RARW.battle;let r=rnd()*100;for(let i=0;i<3;i++){r-=w[i];if(r<=0)return i+1}return 1}
+function genWeapon(f,rar){
+  const t=1+Math.floor((f-1)/5)+(rar===3?1:0);
+  const el=f>ELFLOOR&&rnd()<0.75?EL[ri(0,3)]:'無';
+  let trait=null,bonus=0;
+  if(rar===1){bonus=ri(1,2);if(rnd()<0.5){trait=TRK[ri(0,TRK.length-1)]}}
+  else if(rar===2){bonus=ri(3,4);trait=TRK[ri(0,TRK.length-1)]}
+  else{bonus=ri(5,7);trait=rnd()<0.4?'pierce':TRK[ri(0,TRK.length-1)]}
+  const type=TYPE[ri(0,TYPE.length-1)];
+  return {id:'w'+(++S.wc),name:`${trait?PRE[trait]:''}${matName(t)}の${type}`,el,power:wPow(t)+bonus,trait,plus:0,rar,kind:'W'};
+}
+function genArmor(f,rar){
+  const t=1+Math.floor((f-1)/5)+(rar===3?1:0);
+  const el=f>ELFLOOR&&rnd()<0.7?EL[ri(0,3)]:'無';
+  const pre=['','丈夫な','堅牢な','不滅の'][rar];
+  return {id:'a'+(++S.wc),name:`${pre}${matName(t)}の${ATYPE[el]}`,el,def:aDef(t,el)+[0,1,2,4][rar],hp:[0,0,5*t,10*t][rar],t,plus:0,rar,kind:'A'};
+}
+function rollDrop(k,f){
+  const pr=(k==='guard'&&f<=ELFLOOR)?1:Math.min(1,(DROP[k]||0)*(f<=ELFLOOR?1.4:1)*(1+0.15*jobIs('mer')));
+  if(rnd()>=pr)return null;
+  const rar=rollRar(k);
+  return rnd()<0.7?genWeapon(f,rar):genArmor(f,rar);
+}
+const armScore=a=>a.def+(a.hp||0)/6;
+function giveItem(it,notes){
+  const me=S.me;
+  if(it.kind==='A'){
+    me.armors.push(it);
+    if(armScore(it)>armScore(curArmor())){me.armor=it.id;notes.push(`${it.name}をそのまま装備した。`)}
+    if(me.armors.length>6){const c=me.armors.filter(a=>a.id!==me.armor&&a.id!==it.id).sort((a,b)=>armScore(a)-armScore(b))[0];if(c){me.armors=me.armors.filter(a=>a!==c);const g=Math.round(c.def*18);me.gold+=g;notes.push(`荷物が多いので${c.name}を${g}Gで売った。`)}}
+  }else{
+    me.weapons.push(it);if(S.prep.length<3)S.prep.push(it.id);
+    if(me.weapons.length>12){const c=me.weapons.filter(w=>w!==it&&!S.prep.includes(w.id)&&!(w.rar>=2)).sort((a,b)=>a.power-b.power)[0];if(c){me.weapons=me.weapons.filter(w=>w!==c);const g=Math.round(c.power*4);me.gold+=g;notes.push(`荷物が多いので${c.name}を${g}Gで売った。`)}}
+  }
+}
+const itemTxt=it=>`<span class="rr rr${it.rar}">【${RAR[it.rar]}】</span>${it.name}`;
+function itemDesc(it){
+  if(it.kind==='A')return `防御${it.def}${it.hp?` ・ 最大HP+${it.hp}`:''}${it.el!=='無'?` ・ ${it.el}の敵から受けるダメージ×0.75`:''}`;
+  return `威力${it.power}${it.trait?` ・ 【${TR[it.trait].n}】${TR[it.trait].d}`:''}${it.el!=='無'?` ・ ${it.el}属性`:''}`;
+}
+function addDrop(k,f){const d=S.dive,it=rollDrop(k,f);if(it){d.drops.push(it);d.msg.push(`★ ${itemTxt(it)}を見つけた!`)}}
+
+function winFight(){
+  const d=S.dive,e=d.fight.e,k=e.kind,fl=d.floor;
+  const R={battle:{xp:8,g:1},elite:{xp:16,g:2.2},guard:{xp:24,g:3.5},boss:{xp:40,g:6}}[k];
+  const xp=Math.round(R.xp*(1+fl*0.04)*RW*(fl<=ELFLOOR?1.4:1));
+  const plu=d.loadout.some(id=>{const w=S.me.weapons.find(x=>x.id===id);return w&&w.trait==='plunder'})?1.2:1;
+  const gold=Math.round((3+1.0*fl)*(0.8+rnd()*0.4)*R.g*goldMul()*RW*plu);
+  d.score+=1;d.loot.gold+=gold;d.exp+=xp;d.boost=false;
+  d.msg=[`${e.name}を倒した。${gold}G、経験値+${xp}。`];
+  if(jobIs('pri')){const h=Math.round(maxHp()*0.03*jobIs('pri'));d.hp=Math.min(maxHp(),d.hp+h)}
+  if(k!=='boss')addDrop(k,fl);
+  d.fight=null;
+  if(k==='guard'||k==='boss'){d.cleared=true;d.msg.push(k==='boss'?'守護者を打ち倒した。':'階層の番人を倒した。');finishDive('clear')}
+  else d.phase='choose';
+}
+function evChoose(v){
+  const d=S.dive,t=d.ev,f=d.floor;let msg=[];
+  if(t==='chest'){
+    if(v==='open'){
+      const r=rnd();const g=Math.round((4+1.6*f)*goldMul()*RW);
+      if(r<0.2){const dm=Math.round(4+f*0.3);d.hp=Math.max(1,d.hp-dm);const x=Math.round(g*0.3);d.loot.gold+=x;msg.push(`罠だった。${dm}ダメージ。${x}Gだけ手に入った。`)}
+      else if(r<0.75){const x=Math.round(g*1.3);d.loot.gold+=x;msg.push(`${x}Gを見つけた。`)}
+      else{const x=Math.round(g*2.6);d.loot.gold+=x;msg.push(`大当たり。${x}Gを見つけた。`);d.msg=[];addDrop('chest',f);msg.push(...d.msg)}
+    }else msg.push('宝箱は見送った。');
+  }else if(t==='spring'){
+    if(v==='drink'){const h=Math.round(maxHp()*0.4);d.hp=Math.min(maxHp(),d.hp+h);msg.push(`泉の水で傷が癒えた。HP+${h}。`)}
+    else msg.push('泉は素通りした。');
+  }else if(t==='rift'){
+    if(v==='jump'){
+      if(rnd()<0.6){const x=Math.round((4+1.6*f)*1.5*goldMul()*RW);d.loot.gold+=x;msg.push(`飛び越えた先に財宝があった。${x}G。`)}
+      else{const dm=Math.round(4+f*0.3);d.hp=Math.max(1,d.hp-dm);msg.push(`着地に失敗した。${dm}ダメージ。`)}
+    }else msg.push('裂け目を迂回した。');
+  }else if(t==='shrine'){
+    const cost=Math.round(2+f*0.8);
+    if(v==='pray'){d.boost=true;msg.push('祈りが届いた。次の戦闘の与ダメージが1.3倍になる。')}
+    else if(d.loot.gold>=cost){d.loot.gold-=cost;const h=Math.round(maxHp()*0.5);d.hp=Math.min(maxHp(),d.hp+h);msg.push(`${cost}Gを供えた。HP+${h}。`)}
+    else msg.push('供えるものがなかった。');
+  }
+  d.ev=null;d.msg=msg;d.phase='choose';
+}
+function finishDive(reason){
+  const d=S.dive,me=S.me;
+  const atFront=d.floor===S.floor,boss=atFront&&S.enemy.boss;
+  const loot={gold:reason==='faint'?Math.floor(d.loot.gold/2):d.loot.gold,ore:0,core:{火:0,水:0,雷:0,風:0}};
+  me.gold+=loot.gold;
+  let got=d.drops||[];const lost=[],notes=[];
+  if(reason==='faint')got=got.filter(it=>{if(rnd()<0.5){lost.push(it);return false}return true});
+  got.forEach(it=>giveItem(it,notes));
+  const l0=lv();me.exp+=d.exp;const l1=lv();
+  let adv=false,soul=null;
+  if(atFront&&d.cleared){
+    adv=true;const f=d.floor,bn=S.enemy.name,w=S.week;
+    if(boss){
+      soul={id:'w'+(++S.wc),name:`${bn.split(' ').pop()}の魂`,el:S.enemy.el,power:wPow(1+Math.floor(f/5))+4,trait:'pierce',plus:0,rar:3,kind:'W'};
+      me.weapons.push(soul);me.titles.push(`${bn} 撃破`);
+      S.timeline.unshift({w,t:`第${f}層の守護者「${bn}」を倒した`});
+      S.headline=`守護者「${bn}」を倒した`;
+    }else{S.timeline.unshift({w,t:`第${f}層を突破`});S.headline=`第${f}層を突破した`}
+    if(f>=100){S.finished=true;S.headline='百層の塔を踏破した'}
+    else{const t0=tierNow();S.floor++;S.diveFloor=S.floor;if(S.floor===ELFLOOR+1){S.timeline.unshift({w,t:'チュートリアル終了。属性の敵が現れ、職業も選べるようになった'});S.headline='属性の敵が現れる領域に入った。職業が選べる'}if(tierNow()>t0)S.timeline.unshift({w,t:`街の店に${matName(tierNow())}の装備が並んだ`})}
+    S.timeline=S.timeline.slice(0,40);
+  }
+  me.dives++;me.best=Math.max(me.best,S.floor);
+  d.result={reason,loot,drops:got,lost,notes,exp:d.exp,score:d.score,adv,soul,atFront,levelUp:l1>l0?l1:0,steps:d.step,floor:d.floor};
+  d.phase='result';d.fight=null;d.ev=null;
+}
+
+/* ---------- shop ---------- */
+function buy(kind,v){
+  const me=S.me,sh=S.shop;const [t,x]=(v||'').split(':');const tt=+t;
+  if((kind==='W'||kind==='A')&&x!=='無'&&!elOn())return;
+  if(kind==='W'){
+    const p=wPrice(tt,x);if(me.gold<p)return;me.gold-=p;
+    const nw={id:'w'+(++S.wc),name:`${matName(tt)}の${WTYPE[x]}`,el:x,power:wPow(tt),trait:null,plus:0};me.weapons.push(nw);if(S.prep.length<3)S.prep.push(nw.id);
+    sh.msg=`${matName(tt)}の${WTYPE[x]}を買った。持ち込む武器は「潜る準備」で選べます。`;
+  }else if(kind==='A'){
+    const p=aPrice(tt);if(me.gold<p)return;me.gold-=p;
+    const a={id:'a'+(++S.wc),name:`${matName(tt)}の${ATYPE[x]}`,el:x,def:aDef(tt,x),t:tt,plus:0};
+    me.armors.push(a);if(a.def>curArmor().def)me.armor=a.id;
+    sh.msg=`${a.name}を買った(防御${a.def})。${me.armor===a.id?'そのまま装備した。':''}`;
+  }else if(kind==='C'){
+    const p=cPrice(tt);if(me.gold<p)return;me.gold-=p;
+    const c={id:'c'+(++S.wc),name:`${matName(tt)}の${ACC[x][0]}`,kind:x,t:tt};
+    me.accs.push(c);if(!me.acc)me.acc=c.id;
+    sh.msg=`${c.name}を買った(${ACC[x][1](tt)})。${me.acc===c.id?'そのまま身につけた。':''}`;
+  }else if(kind==='P'){
+    if(me.gold<POTION||me.potions>=9)return;me.gold-=POTION;me.potions++;sh.msg='薬を1つ買った。';
+  }
+}
+const MAXP=6;
+const enhW=w=>Math.round(w.power*(w.plus+2)*3);
+const enhA=a=>Math.round((a.def+2)*(a.plus+2)*12);
+function enhance(kind,v){
+  const me=S.me,sh=S.shop;
+  if(kind==='w'){const w=me.weapons.find(x=>x.id===v);const c=enhW(w);if(!w||w.plus>=MAXP||me.gold<c)return;me.gold-=c;w.plus++;w.power+=2;sh.msg=`${wName(w)}に鍛え直した。威力${w.power}。(${c}G)`}
+  else{const a=me.armors.find(x=>x.id===v);const c=enhA(a);if(!a||a.plus>=MAXP||me.gold<c)return;me.gold-=c;a.plus++;a.def+=1;sh.msg=`${a.name}を補強した。防御${a.def}。(${c}G)`}
+}
+function sell(kind,v){
+  const me=S.me,sh=S.shop;
+  if(kind==='ore'){if(me.ore<1)return;me.ore--;me.gold+=5;sh.msg='鉄鉱を1つ売った。5G。'}
+  else if(kind==='core'){if(me.core[v]<1)return;me.core[v]--;me.gold+=12;sh.msg=`${v}の核を1つ売った。12G。`}
+  else if(kind==='w'){
+    if(me.weapons.length<=1)return;const w=me.weapons.find(x=>x.id===v);const g=Math.round(w.power*4);
+    me.weapons=me.weapons.filter(x=>x.id!==v);S.prep=S.prep.filter(id=>id!==v);me.gold+=g;sh.msg=`${wName(w)}を売った。${g}G。`;
+  }else if(kind==='a'){
+    const a=me.armors.find(x=>x.id===v);if(!a||a.id===me.armor)return;const g=Math.round(a.def*18);
+    me.armors=me.armors.filter(x=>x.id!==v);me.gold+=g;sh.msg=`${a.name}を売った。${g}G。`;
+  }else if(kind==='c'){
+    const c=me.accs.find(x=>x.id===v);if(!c||c.id===me.acc)return;const g=Math.round(cPrice(c.t)*0.4);
+    me.accs=me.accs.filter(x=>x.id!==v);me.gold+=g;sh.msg=`${c.name}を売った。${g}G。`;
+  }
+}
+
+/* ---------- smithing ---------- */
+function craft(el,dest){
+  const me=S.me,f=S.floor;
+  me.ore-=2;me.core[el]--;S.ap--;
+  const power=wPow(tierNow())+ri(0,3);
+  const trait=rnd()<0.6?TRK[ri(0,TRK.length-1)]:null;
+  const w={id:'w'+(++S.wc),name:`${ADJ[el]}の${TYPE[ri(0,TYPE.length-1)]}`,el,power,trait,plus:0};
+  if(dest==='self'){
+    me.weapons.push(w);
+    S.sm.msg=`${chip(el)} ${w.name}を打った。威力${power}${trait?`、${wTrait(w)}${TR[trait].d}`:''}。持ち物に加わった。`;
+  }else{
+    const W=weakOf(S.enemy.el),good=el===W;
+    const g=good?6:3;S.weekGain=+(S.weekGain+g).toFixed(1);me.pts+=good?3:1;
+    S.sm.msg=`${chip(el)} ${w.name}(威力${power})を補給所に納めた。${good?'今週の弱点属性だったので、前線は大助かり。':''}踏破ゲージに+${g}%。`;
+  }
+}
+function upgrade(id){
+  const me=S.me,w=me.weapons.find(x=>x.id===id);
+  me.ore-=3;if(w.el!=='無')me.core[w.el]--;S.ap--;
+  w.plus++;w.power+=2;
+  S.sm.msg=`${wName(w)}を鍛え直した。威力${w.power}。`;
+}
+const upCost=w=>w.el==='無'?'鉄鉱3':`鉄鉱3 + ${w.el}の核1`;
+const canUp=w=>w.plus<MAXP&&S.me.ore>=3&&(w.el==='無'||S.me.core[w.el]>=1);
+
+/* ---------- week end ---------- */
+function endWeek(){
+  const me=S.me,boss=S.enemy.boss,f=S.floor,bn=S.enemy.name,L=[];
+  if(S.ap>0){const xp=S.ap*4;me.exp+=xp;L.push(`余った行動力${S.ap}で街を歩いた。経験値+${xp}。`)}
+  const npc=+(boss?14+rnd()*6:45+rnd()*12).toFixed(1);
+  const before=S.gauge,mine=S.weekGain;
+  const afterMine=before+mine;
+  S.gauge=afterMine+npc;
+  let cleared=false,bossKilled=false,oldTier=tierNow();
+  if(S.gauge>=100){
+    cleared=true;bossKilled=boss;
+    const la=boss&&afterMine>=100;
+    S.gauge=boss?0:Math.min(50,S.gauge-100);
+    if(f>=100){S.finished=true;S.gauge=100}else S.floor++;
+    if(bossKilled){
+      if(la){
+        const el=S.enemy.el,w={id:'w'+(++S.wc),name:`${bn.split(' ').pop()}の魂`,el,power:14+f,trait:'pierce',plus:0};
+        me.weapons.push(w);me.titles.push(`${bn} ラストアタック`);
+        L.push(`あなたの戦果で守護者のHPが尽きた。ラストアタックの報酬として伝説の武器「${w.name}」(威力${w.power}・貫通)を授与された。`);
+      }
+      if(me.bossPart){me.titles.push(`${bn} 討伐戦参加`);L.push(`称号「${bn} 討伐戦参加」を獲得した。`);me.bossPart=false}
+    }
+  }
+  if(tierNow()>oldTier)L.push(`前線が進み、街の店に${matName(tierNow())}の装備が並んだ。`);
+  let head;
+  if(bossKilled)head=f>=100?`塔の主「${bn}」撃破。百層の塔が完全攻略された`:`【歴史的快挙】第${f}層の守護者「${bn}」撃破。二度と復活しない`;
+  else if(cleared)head=`第${f}層を突破。最前線は第${f+1}層へ`;
+  else if(boss)head=`守護者「${bn}」との戦い続く。残りHP${Math.round(100-S.gauge)}%`;
+  else head=`第${f}層、踏破${Math.round(S.gauge)}%。${S.gauge>=60?'突破は目前':'まだ先は長い'}`;
+  S.headline=head;
+  if(cleared)S.timeline.unshift({w:S.week,t:bossKilled?`第${f}層の守護者「${bn}」撃破`:`第${f}層を突破`});
+  if(tierNow()>oldTier)S.timeline.unshift({w:S.week,t:`街の店に${matName(tierNow())}の装備が並んだ`});
+  S.timeline=S.timeline.slice(0,40);
+  S.last={npc,mine,cleared,bossKilled,f,L,gauge:S.gauge,head,boss};
+  S.view='weekend';
+}
+function nextWeek(){
+  if(S.finished){S=newWorld();return}
+  S.week++;S.ap=6;S.weekGain=0;S.rumor=false;S.dive=null;S.view='home';S.last=null;
+  S.enemy=rollEnemy(S);
+  S.diveFloor=clamp(S.diveFloor,1,S.floor);
+  S.sm.msg='';S.shop.msg='';
+}
+
+/* ---------- rendering ---------- */
+function apHtml(){return `<div class="ap"><span>ターン${S.week}</span><span>Lv${lv()}</span><span class="gold">${S.me.gold}G</span></div>`}
+
+const STANCE={safe:{n:'慎重',d:'傷が深いと早めに撤退し、薬も早めに使う。2階目へはHPが8割以上のときだけ進む',ret:.45,pot:.55,sp:.75,jump:.7,flee:.35,cont:.8},
+  std:{n:'標準',d:'宝箱や通常戦闘を中心に進む。2階目へはHPが6割以上で進む',ret:.3,pot:.4,sp:.6,jump:.5,flee:.25,cont:.6},
+  bold:{n:'攻め',d:'精鋭に積極的に挑み、ぎりぎりまで戦う。2階目へはHPが4割以上で進む。気絶しやすい',ret:.15,pot:.25,sp:.4,jump:.3,flee:.12,cont:.4}};
+function autoDive(){
+  const d=S.dive,st=STANCE[S.policy.stance];const L=[];let guard=0,seen=null;
+  const grab=()=>{if(d.msg&&d.msg!==seen){seen=d.msg;d.msg.forEach(m=>L.push(m))}};
+  while(d.phase!=='result'&&guard++<600){
+    const hpr=d.hp/maxHp();
+    if(d.phase==='choose'){
+      grab();
+      if(d.step>=2&&hpr<st.ret&&S.me.potions===0){finishDive('flee');L.push('消耗が激しく、撤退した。');break}
+      const rooms=d.plan[d.step];let idx=0,best=1e9;
+      const pri=hpr<st.sp?['spring','shrine','chest','battle','rift','elite']:S.policy.stance==='bold'?['elite','battle','chest','shrine','rift','spring']:['chest','battle','elite','shrine','rift','spring'];
+      rooms.forEach((r,i)=>{const p=pri.indexOf(r.t);const q=p<0?-1:p;if((q<best&&q>=0)||(r.t==='guard'||r.t==='boss')){best=q;idx=i}});
+      enterRoom(rooms[idx]);
+    }else if(d.phase==='event'){
+      const t=d.ev;let c='skip';
+      if(t==='chest')c='open';
+      else if(t==='spring')c=hpr<0.85?'drink':'skip';
+      else if(t==='rift')c=hpr>st.jump?'jump':'skip';
+      else if(t==='shrine')c=(hpr<0.4&&d.loot.gold>=Math.round(2+d.floor*0.8))?'offer':'pray';
+      evChoose(c);
+    }else if(d.phase==='fight'){
+      const f=d.fight,e=f.e,it=f.intent;
+      if(hpr<st.pot&&S.me.potions>0&&it.dmg<d.hp){playerAct('potion');continue}
+      if((it.type==='release'||it.type==='heavy')&&it.dmg>=d.hp*0.6){playerAct('def');continue}
+      const ws=d.loadout.map(id=>S.me.weapons.find(w=>w.id===id)).filter(w=>w&&(w.trait==='twin'?2:1)-(f.used[w.id]||0)>0).map(w=>({w,c:calc(w,e.el)})).sort((a,b)=>b.c.dmg-a.c.dmg);
+      if(ws.length)playerAct('atk',ws[0].w.id);else playerAct('bare');
+      if(S.dive.phase==='fight'&&hpr<st.flee&&S.me.potions===0&&S.dive.fight){finishDive('flee');L.push('力尽きる前に撤退した。');break}
+    }
+  }
+  grab();
+  return L;
+}
+function endTurn(){
+  const P=S.policy,me=S.me,st=STANCE[P.stance];
+  const rep={turn:S.week,floor0:S.floor,lv0:lv(),gold0:me.gold,exp0:me.exp,dives:[],bonus:0,stance:P.stance,mode:P.mode};
+  S.prep=S.prep.filter(id=>me.weapons.some(w=>w.id===id));
+  if(S.prep.length<1)S.prep=me.weapons.slice().sort((a,b)=>b.power-a.power).slice(0,3).map(w=>w.id);
+  let f=P.mode==='push'?S.floor:clamp(P.floor,1,S.floor),carry=null;
+  for(let seg=0;seg<2&&!S.finished;seg++){
+    S.diveFloor=f;setEnemy(f);
+    const pot0=me.potions,el=S.enemy.el;
+    startDive();
+    if(seg===1){S.dive.hp=carry;S.dive.msg=[`そのまま第${f}層へ進んだ(HP ${carry}/${maxHp()})。`]}
+    const lines=autoDive();
+    const d=S.dive,r=d.result;
+    r.drops.filter(x=>x.rar===3).forEach(x=>S.timeline.unshift({w:S.week,t:`秘宝「${x.name}」を拾った`}));
+    rep.dives.push({floor:f,el,reason:r.reason,gold:r.loot.gold,exp:r.exp,adv:r.adv,soul:r.soul,drops:r.drops,lost:r.lost,notes:r.notes,lines,potions:pot0-me.potions,levelUp:r.levelUp,steps:r.steps,fin:S.finished});
+    carry=d.hp;const cleared=!!d.cleared;
+    S.dive=null;
+    if(!cleared||S.finished)break;
+    const nf=P.mode==='push'?S.floor:Math.min(f+1,S.floor);
+    if(seg===0&&carry/maxHp()>=st.cont&&nf>f){f=nf;continue}
+    break;
+  }
+  rep.floor1=S.floor;rep.lv1=lv();rep.gold1=me.gold;rep.exp1=me.exp;
+  S.report=rep;S.week++;S.view='report';
+  S.headline=rep.floor1>rep.floor0?`第${rep.floor1}層に到達した`:`ターン${rep.turn}を終えた`;
+}
+function reportHtml(){
+  const r=S.report;if(!r)return '';
+  const ttl={clear:'踏破',flee:'撤退',faint:'気絶して帰還'};
+  const rows=[['到達階',r.floor1>r.floor0?`第${r.floor0}層 → 第${r.floor1}層`:`第${r.floor1}層(変わらず)`],
+    ['レベル',r.lv1>r.lv0?`Lv${r.lv0} → Lv${r.lv1}`:`Lv${r.lv1}`],
+    ['所持金',`${r.gold0}G → ${r.gold1}G(${r.gold1-r.gold0>=0?'+':''}${r.gold1-r.gold0}G)`],
+    ['経験値',`+${r.exp1-r.exp0}${r.bonus?`(余った行動力で+${r.bonus})`:''}`]
+  ].map(([k,v])=>`<li><span>${k}</span><b>${v}</b></li>`).join('');
+  const ds=r.dives.map((d,i)=>`<div class="grp"><div class="k">${i+1}階目 ・ 第${d.floor}層 ${chip(d.el)} ・ ${ttl[d.reason]}${d.adv?'(次の層へ進んだ)':''}</div>
+    <p class="s">${d.gold}G・経験値+${d.exp}${d.potions>0?`・薬${d.potions}個使用`:''}${d.levelUp?`・Lv${d.levelUp}に上がった`:''}</p>
+    <ul class="log">${d.lines.slice(0,14).map(l=>`<li>${l}</li>`).join('')}${d.lines.length>14?`<li>……ほか${d.lines.length-14}件</li>`:''}</ul>
+    ${d.soul?`<p class="note">守護者の魂「${d.soul.name}」(威力${d.soul.power}・貫通)を手に入れた。</p>`:''}
+    ${(d.drops&&d.drops.length)||(d.lost&&d.lost.length)?`<div class="loot"><div class="k">戦利品</div><ul>${d.drops.map(it=>`<li>${chip(it.el)} ${itemTxt(it)}<small>${itemDesc(it)}</small></li>`).join('')}${d.lost&&d.lost.length?`<li><small>気絶して${d.lost.map(it=>it.name).join('、')}を落としてしまった。</small></li>`:''}</ul>${d.notes&&d.notes.length?`<small>${d.notes.join(' ')}</small>`:''}</div>`:''}</div>`).join('');
+  return `<h2>ターン${r.turn}の結果</h2><span class="stamp">${STANCE[r.stance].n}</span><ul class="rows">${rows}</ul>${ds||'<p class="note">今ターンは潜らなかった。</p>'}
+  <div class="row"><button class="go" data-do="goHome">ターン${S.week}の準備へ</button></div>`;
+}
+function nextTurn(){
+  const bonus=S.ap*4;if(bonus>0)S.me.exp+=bonus;
+  S.week++;S.ap=6;S.dive=null;S.view='home';
+  S.headline=`ターン${S.week}が始まった。${bonus>0?`余った行動力で街を歩き、経験値+${bonus}。`:'行動力が回復した。'}`;
+}
+function renderPaper(){
+  const f=S.floor,el=floorEl(f),W=weakOf(el),bf=!!BOSS[f];
+  $('#edition').textContent=`ターン${S.week} ・ 到達 第${f}層`;
+  let body;
+  if(S.finished){body='<p class="note">最上層を踏破しました。</p>'}
+  else body=`<div class="front">
+    <div><div class="k">到達階</div><div class="v">第${f}層</div><div class="s">${bf?'守護者: '+BOSS[f][0]:'エリア: '+BIOME[el]}</div></div>
+    <div><div class="k">敵の中心属性</div><div class="v">${chip(el)} ${el}</div><div class="s">${el==='無'?'属性なし。属性の敵は第11層から現れます':`弱点は${chip(W)}${W}(×1.4)。${el}は効きにくい(×0.7)`}</div></div>
+    <div><div class="k">店の品揃え</div><div class="v">${matName(tierNow())}</div><div class="s">次の入荷は第${5*tierNow()+1}層に到達したとき</div></div>
+  </div>`;
+  $('#paper').innerHTML=`<h2>いまの塔</h2><p class="head">${S.headline}</p>${body}`;
+}
+function homeHtml(){
+  const P=S.policy,me=S.me;
+  const f=P.mode==='push'?S.floor:clamp(P.floor,1,S.floor);
+  const E=S.enemy.el;const [rt,rc]=rating(f);
+  const sel=S.prep.filter(id=>me.weapons.some(w=>w.id===id));
+  const list=me.weapons.map(w=>{const c=calc(w,E);const on=sel.includes(w.id);
+    return `<button class="opt" data-do="toggleW" data-v="${w.id}" aria-pressed="${on}">${chip(w.el)} ${wName(w)} ${wTrait(w)}<small>威力${w.power} ・ この階の敵に${mTxt(c.m)}${w.trait?` ・ ${TR[w.trait].d}`:''}</small></button>`}).join('');
+  const a=curArmor(),c=curAcc();
+  const exGold=Math.round((3+1.0*f)*8*goldMul());
+  const st=Object.keys(STANCE).map(k=>`<button class="opt" data-do="stance" data-v="${k}" aria-pressed="${P.stance===k}">${STANCE[k].n}<small>${STANCE[k].d}</small></button>`).join('');
+  return `<h2>ターン${S.week}の準備</h2>${apHtml()}
+  <div class="grp"><div class="k">探索の方針</div>
+    <div class="opts tight"><button class="opt" data-do="pmode" data-v="push" aria-pressed="${P.mode==='push'}">前進<small>常に到達階へ。番人を倒すと次の層へ進む</small></button><button class="opt" data-do="pmode" data-v="farm" aria-pressed="${P.mode==='farm'}">周回<small>下の階で稼ぎと経験値。先へは進まない</small></button></div>
+    ${P.mode==='farm'?`<div class="picker" style="margin-top:8px"><button class="ghost" data-do="pfl" data-v="-1" ${f<=1?'disabled':''}>−</button><span class="fl">第${f}層</span><button class="ghost" data-do="pfl" data-v="1" ${f>=S.floor?'disabled':''}>+</button></div>`:''}
+    <p class="s" style="margin-top:8px">第${f}層 ${chip(E)} ${E}が中心 ・ <span class="rate ${rc}">危険度: ${rt}</span> ・ 1回の稼ぎの目安は約${exGold}G</p>
+  </div>
+  ${jobUnlocked()?`<div class="grp"><div class="k">職業(${me.job?`いまは${JOBS[me.job].n}・習熟${jobRank()}`:'まだ選んでいません'}。Lv10ごとに効果が伸びる)</div><div class="opts">${Object.keys(JOBS).map(k=>{const cost=me.job&&me.job!==k?30*lv():0;return `<button class="opt" data-do="job" data-v="${k}" aria-pressed="${me.job===k}" ${cost>me.gold?'disabled':''}>${JOBS[k].n}<small>${JOBS[k].d(jobRank())}${cost?` ・ 転職 ${cost}G`:''}</small></button>`}).join('')}</div></div>`:`<p class="note">第10層までは基礎を学ぶ区間です。第11層で、属性の敵と職業が解禁されます。</p>`}
+  <div class="grp"><div class="k">探索の姿勢</div><div class="opts">${st}</div></div>
+  <div class="grp"><div class="k">持ち込む武器(3本まで・戦闘ごとに自動で最適なものを使う)</div><div class="opts">${list||'<p class="small">武器がありません。街の店で買ってください(素手でも戦えますが、とても弱いです)。</p>'}</div></div>
+  <p class="s">防具: ${wName(a)}(防御${a.def}${a.hp?`、最大HP+${a.hp}`:''}${a.el!=='無'?`、${a.el}の敵から受けるダメージ×0.75`:''})。装飾: ${c?c.name:'なし'}。薬は${me.potions}個。</p>
+  <div class="row"><button class="go" data-do="endTurn" ${sel.length>3?'disabled':''}>ターン終了</button><button class="ghost" data-do="goShop">街の店で装備を整える</button><button class="ghost" data-do="resetAll">最初からやり直す</button></div>
+  <p class="note">装備と方針を決めて「ターン終了」を押すと、1回の探索が自動で進んで結果が出ます。階の番人を倒したあとHPに余裕があれば、そのまま次の階へ進み、最大2階まとめて踏破します(姿勢によって、続ける目安のHPが変わります)。本番では週1回の定期実行で同じことが行われます。</p>`;
+}
+function prepHtml(){
+  const me=S.me,E=S.enemy.el,f=clamp(S.diveFloor,1,S.floor);
+  const sel=S.prep.filter(id=>me.weapons.some(w=>w.id===id));
+  const [rt,rc]=rating(f);
+  const list=me.weapons.map(w=>{const c=calc(w,E);const on=sel.includes(w.id);
+    return `<button class="opt" data-do="toggleW" data-v="${w.id}" aria-pressed="${on}">${chip(w.el)} ${wName(w)} ${wTrait(w)}<small>威力${w.power} ・ この階の敵に${mTxt(c.m)}${w.trait?` ・ ${TR[w.trait].d}`:''}</small></button>`}).join('');
+  const a=curArmor(),c=curAcc();
+  const exGold=Math.round((3+1.0*f)*8*goldMul());
+  return `<h2>潜る準備</h2>${apHtml()}
+  <div class="grp"><div class="k">潜る階層(自分の力で登れるところまで)</div>
+    <div class="picker"><button class="ghost" data-do="fl" data-v="-1" ${f<=1?'disabled':''}>−</button><span class="fl">第${f}層</span><button class="ghost" data-do="fl" data-v="1" ${f>=S.floor?'disabled':''}>+</button><button class="ghost" data-do="fl" data-v="max">到達階へ</button><span class="rate ${rc}">危険度: ${rt}</span></div>
+    <p class="s">${f===S.floor?'到達階です。番人(守護者)を倒すと次の層へ進めます。':'踏破済みの階層です。稼ぎと経験値が目的で、先へは進みません。'}1回で稼げる金の目安は約${exGold}G。</p>
+  </div>
+  <p class="s">${E==='無'?'この階の敵に属性はありません。':`この階の敵は${chip(E)}${E}が中心で、${chip(weakOf(E))}${weakOf(E)}の武器が弱点です。`}防具: ${a.name}(防御${a.def}${a.el!=='無'?`、${a.el}の敵から受けるダメージ×0.75`:''})。装飾: ${c?c.name:'なし'}。薬は${me.potions}個。</p>
+  <div class="grp"><div class="k">持ち込む武器(3本まで)</div><div class="opts">${list}</div></div>
+  <div class="row"><button class="go" data-do="startDive" ${sel.length<1||sel.length>3||S.ap<2?'disabled':''}>塔に入る(行動力2)</button><button class="ghost" data-do="goShop">店で装備を整える</button><button class="ghost" data-do="goHome">やめる</button></div>
+  <p class="note">選んだ武器: ${sel.length}/3</p>`;
+}
+function hpHtml(d){
+  return `<div class="gl"><span>あなた Lv${lv()}</span><b>HP ${d.hp}/${maxHp()}</b></div><div class="bar big"><i style="width:${d.hp/maxHp()*100}%"></i></div>`;
+}
+function lootTxt(d){return `${d.loot.gold}G・戦果${d.score}`}
+function diveHtml(){
+  const d=S.dive;
+  const prog=`第${d.floor}層 ${d.step}/6部屋`;
+  if(d.phase==='result'){
+    const r=d.result;
+    const title={clear:'踏破',flee:'撤退',faint:'気絶して帰還'}[r.reason];
+    const loot=`${r.loot.gold}G`;
+    return `<h2>潜行の結果</h2><span class="stamp">${title}</span>
+    <ul class="rows"><li><span>潜った階層</span><b>第${r.floor}層(${r.steps}/6部屋)</b></li><li><span>持ち帰ったもの</span><b>${loot}${r.reason==='faint'?'(気絶で半分に)':''}</b></li><li><span>経験値</span><b>+${r.exp}${r.levelUp?`(Lv${r.levelUp}に上がった!)`:''}</b></li><li><span>戦果</span><b>${r.score}点</b></li><li><span>階層の進み</span><b>${r.adv?(S.finished?'塔を踏破':`第${r.floor+1}層へ進める`):r.atFront?'到達階(番人は倒せていない)':'踏破済みの階層'}</b></li></ul>
+    ${r.soul?`<p class="note">守護者の魂「${r.soul.name}」(威力${r.soul.power}・貫通)を手に入れた。</p>`:''}
+    ${r.reason==='faint'?'<p class="note">気絶してもキャラクターは失われません。街の人が運んでくれました。</p>':''}
+    <div class="row"><button class="go" data-do="diveDone">街へ戻る</button></div>`;
+  }
+  const msg=d.msg&&d.msg.length?`<div class="msg">${d.msg.map(m=>`<p>${m}</p>`).join('')}</div>`:'';
+  if(d.phase==='choose'){
+    const rooms=d.plan[d.step];
+    const doors=rooms.map((r,i)=>{const [k,h]=DOOR[r.t];return `<button class="opt door" data-do="door" data-v="${i}"><b><span class="el sq" style="--c:var(--ink)">${k}</span> ${r.t==='guard'||r.t==='boss'?(r.t==='boss'?'守護者の間':'番人の間'):'扉'}</b><small>${h}</small></button>`}).join('');
+    return `<h2>塔の中 (${prog})</h2>${hpHtml(d)}${msg}
+    <div class="grp" style="margin-top:12px"><div class="k">${d.step>=5?'最後の扉':'進む扉を選ぶ'}</div><div class="opts">${doors}</div></div>
+    <div class="row"><button class="ghost" data-do="retreat">撤退して持ち帰る(${lootTxt(d)})</button></div>
+    <p class="note">気絶すると持ち帰る金と素材が半分になります。奥へ進むほど、報酬も危険も増えます。${d.boost?' 祈りの加護が残っています。':''}</p>`;
+  }
+  if(d.phase==='event'){
+    const t=d.ev;const opts={
+      chest:[['open','開ける','中身は当たり外れがある。罠もあるかもしれない'],['skip','見送る','何も起きない']],
+      spring:[['drink','泉の水を飲む',`HPを${Math.round(maxHp()*0.4)}回復`],['skip','素通りする','何も起きない']],
+      rift:[['jump','飛び越える','6割で金。失敗するとダメージ'],['skip','迂回する','安全に進む']],
+      shrine:[['pray','祈る','次の戦闘の与ダメージ×1.3'],['offer','金を供える','HPを半分回復(戦利品の金から)']]
+    }[t];
+    const b=opts.map(([v,l,s])=>`<button class="opt" data-do="ev" data-v="${v}">${l}<small>${s}</small></button>`).join('');
+    return `<h2>塔の中 (${prog})</h2>${hpHtml(d)}<p class="head" style="margin-top:12px;font-size:20px">${DOOR[t][1]}</p><div class="opts">${b}</div>`;
+  }
+  if(d.phase==='fight'){
+    const f=d.fight,e=f.e;
+    const kl={battle:'',elite:'精鋭',guard:'階層の番人',boss:'守護者'}[e.kind];
+    const ws=d.loadout.map(id=>S.me.weapons.find(w=>w.id===id)).filter(Boolean).map(w=>{
+      const left=(w.trait==='twin'?2:1)-(f.used[w.id]||0);const c=calc(w,e.el);
+      return `<button class="opt" data-do="atk" data-v="${w.id}" ${left<=0?'disabled':''}>${chip(w.el)} ${wName(w)} ${wTrait(w)}<small>${c.dmg}ダメージ ・ ${mTxt(c.m)}${left<=0?' ・ 使用済み':w.trait==='twin'?` ・ 残り${left}回`:''}</small></button>`}).join('');
+    return `<h2>戦闘 (${prog})</h2>
+    <div class="foe-box"><div class="t"><span class="v">${chip(e.el)} ${e.name}</span><span class="small">${kl}</span></div>
+    <div class="gl" style="margin-top:6px"><span>HP</span><b>${Math.max(0,e.hp)}/${e.max}</b></div><div class="bar big foe"><i style="width:${Math.max(0,e.hp)/e.max*100}%"></i></div>
+    <p class="intent">次の行動: <b>${f.intent.label}</b></p></div>
+    ${hpHtml(d)}
+    <ul class="log" style="margin-top:10px">${f.log.slice(0,4).map(l=>`<li>${l}</li>`).join('')}</ul>
+    <div class="opts">${ws}
+      <button class="opt" data-do="bare">素手で殴る<small>${Math.round((4+lv())*huntMul())}ダメージ。何度でも使える</small></button>
+      <button class="opt" data-do="def">防御<small>次の攻撃を70%減らす</small></button>
+      <button class="opt" data-do="potion" ${S.me.potions<1?'disabled':''}>薬を飲む<small>HP+${healAmt()} ・ 残り${S.me.potions}個</small></button>
+    </div>
+    <div class="row"><button class="ghost" data-do="retreat">逃げる(持ち帰り${lootTxt(d)})</button></div>`;
+  }
+  return '';
+}
+function shopHtml(){
+  const me=S.me,sh=S.shop,T=tierNow();
+  const tabs=[['weapon','武器'],['armor','防具'],['acc','装飾'],['enh','強化'],['item','道具'],['sell','売却'],['equip','装備変更']].map(([v,t])=>`<button class="opt" data-do="shTab" data-v="${v}" aria-pressed="${sh.tab===v}">${t}</button>`).join('');
+  const tiers=(T<20?[T+1,T]:[T]).concat(T>1?[T-1]:[]);
+  let body='';
+  const buyBtn=(d,v,name,sub,price,dis)=>`<button class="opt" data-do="${d}" data-v="${v}" ${me.gold<price||dis?'disabled':''}>${name}<small>${sub} ・ <span class="gold">${price}G</span></small></button>`;
+  if(sh.tab==='weapon'){
+    body=tiers.map(t=>`<div class="grp"><div class="k">${matName(t)}の武器(威力${wPow(t)})${t>T?' ・ 先行入荷(価格2倍)':''}</div><div class="opts">${(elOn()?['無',...EL]:['無']).map(el=>buyBtn('buyW',`${t}:${el}`,`${chip(el)} ${matName(t)}の${WTYPE[el]}`,el==='無'?'属性なし。弱点もないが耐性もない':`${el}属性`,wPrice(t,el))).join('')}</div></div>`).join('');
+  }else if(sh.tab==='armor'){
+    body=tiers.map(t=>`<div class="grp"><div class="k">${matName(t)}の防具${t>T?' ・ 先行入荷(価格2倍)':''}</div><div class="opts">${(elOn()?['無',...EL]:['無']).map(el=>buyBtn('buyA',`${t}:${el}`,`${chip(el)} ${matName(t)}の${ATYPE[el]}`,`防御${aDef(t,el)}${el==='無'?'':` ・ ${el}の敵から受けるダメージ×0.75`}`,aPrice(t))).join('')}</div></div>`).join('');
+  }else if(sh.tab==='acc'){
+    body=tiers.map(t=>`<div class="grp"><div class="k">${matName(t)}の装飾(1つだけ身につけられる)${t>T?' ・ 先行入荷(価格2倍)':''}</div><div class="opts">${Object.keys(ACC).map(k=>buyBtn('buyC',`${t}:${k}`,`${matName(t)}の${ACC[k][0]}`,ACC[k][1](t),cPrice(t))).join('')}</div></div>`).join('');
+  }else if(sh.tab==='enh'){
+    const w=me.weapons.map(x=>`<button class="opt" data-do="enhW" data-v="${x.id}" ${x.plus>=MAXP||me.gold<enhW(x)?'disabled':''}>${chip(x.el)} ${wName(x)} ${wTrait(x)}<small>威力${x.power} → ${x.power+2} ・ ${x.plus>=MAXP?'これ以上は強化できない':`<span class="gold">${enhW(x)}G</span>`}</small></button>`).join('');
+    const a=me.armors.map(x=>`<button class="opt" data-do="enhA" data-v="${x.id}" ${x.plus>=MAXP||me.gold<enhA(x)?'disabled':''}>${chip(x.el)} ${wName(x)}<small>防御${x.def} → ${x.def+1} ・ ${x.plus>=MAXP?'これ以上は強化できない':`<span class="gold">${enhA(x)}G</span>`}`+`</small></button>`).join('');
+    body=`<div class="grp"><div class="k">武器(+${MAXP}まで)</div><div class="opts">${w}</div></div><div class="grp"><div class="k">防具(+${MAXP}まで)</div><div class="opts">${a}</div></div>`;
+  }else if(sh.tab==='item'){
+    body=`<div class="opts">${buyBtn('buyP','x','薬',`HPを回復。所持${me.potions}/9`,POTION,me.potions>=9)}</div>`;
+  }else if(sh.tab==='sell'){
+    const w=me.weapons.map(x=>`<button class="opt" data-do="sellW" data-v="${x.id}" ${me.weapons.length<=1?'disabled':''}>${chip(x.el)} ${wName(x)} ${wTrait(x)}<small>売値 <span class="gold">${Math.round(x.power*4)}G</span></small></button>`).join('');
+    const a=me.armors.map(x=>`<button class="opt" data-do="sellA" data-v="${x.id}" ${x.id===me.armor?'disabled':''}>${chip(x.el)} ${x.name}<small>${x.id===me.armor?'装備中':`売値 <span class="gold">${Math.round(x.def*18)}G</span>`}</small></button>`).join('');
+    const c=me.accs.map(x=>`<button class="opt" data-do="sellC" data-v="${x.id}" ${x.id===me.acc?'disabled':''}>${x.name}<small>${x.id===me.acc?'身につけている':`売値 <span class="gold">${Math.round(cPrice(x.t)*0.4)}G</span>`}</small></button>`).join('');
+    body=`
+    <div class="grp"><div class="k">武器(最後の1本は売れません)</div><div class="opts">${w}</div></div>
+    <div class="grp"><div class="k">防具</div><div class="opts">${a}</div></div>
+    ${c?`<div class="grp"><div class="k">装飾</div><div class="opts">${c}</div></div>`:''}`;
+  }else{
+    const a=me.armors.map(x=>`<button class="opt" data-do="eqA" data-v="${x.id}" aria-pressed="${x.id===me.armor}">${chip(x.el)} ${wName(x)}<small>防御${x.def}${x.hp?` ・ 最大HP+${x.hp}`:''}${x.el!=='無'?` ・ ${x.el}の敵に×0.75`:''}</small></button>`).join('');
+    const c=me.accs.map(x=>`<button class="opt" data-do="eqC" data-v="${x.id}" aria-pressed="${x.id===me.acc}">${x.name}<small>${ACC[x.kind][1](x.t)}</small></button>`).join('');
+    body=`<div class="grp"><div class="k">防具</div><div class="opts">${a}</div></div><div class="grp"><div class="k">装飾</div><div class="opts">${c||'<p class="small">まだ持っていません。装飾タブで買えます。</p>'}</div></div><p class="small">今週の敵は${chip(S.enemy.el)}${S.enemy.el}が中心です。${S.enemy.el}の耐性防具を着ると受けるダメージが減ります。</p>`;
+  }
+  return `<h2>街の店</h2><div class="ap"><span class="gold">所持金 ${me.gold}G</span><span>第${5*T+1}層に到達すると、${matName(T+1)}の装備が入荷します${elOn()?'':'。属性装備は第11層から'}</span></div>
+  ${sh.msg?`<div class="msg"><p>${sh.msg}</p></div>`:''}
+  <div class="opts tight" style="margin-bottom:14px">${tabs}</div>${body}
+  <div class="row"><button class="ghost" data-do="goHome">戻る</button></div>`;
+}
+function smithHtml(){
+  const me=S.me,sm=S.sm,W=weakOf(S.enemy.el);
+  const tabs=[['new','新しく打つ'],['up','強化する']].map(([v,t])=>`<button class="opt" data-do="smTab" data-v="${v}" aria-pressed="${sm.tab===v}">${t}</button>`).join('');
+  let body;
+  if(sm.tab==='new'){
+    const els=EL.map(el=>`<button class="opt" data-do="smEl" data-v="${el}" aria-pressed="${sm.el===el}">${chip(el)} ${el}の武器<small>核 ${me.core[el]}個${el===W?' ・ 今週の弱点属性':''}</small></button>`).join('');
+    const ok=S.ap>=1&&me.ore>=2&&me.core[sm.el]>=1;
+    body=`<div class="grp"><div class="k">属性(鉄鉱2 + その属性の核1)</div><div class="opts">${els}</div></div>
+    <div class="grp"><div class="k">できた武器の行き先</div><div class="opts">
+      <button class="opt" data-do="smDest" data-v="self" aria-pressed="${sm.dest==='self'}">自分で使う<small>持ち物に加わる。特性がつくことがある(店では買えない)</small></button>
+      <button class="opt" data-do="smDest" data-v="supply" aria-pressed="${sm.dest==='supply'}">補給所に納める<small>ゲージ+3%(弱点属性なら+6%)、名工ポイント</small></button></div></div>
+    ${ok?'':'<p class="why">鉄鉱2と、その属性の核1が必要です。</p>'}
+    <button class="go" data-do="smDo" ${ok?'':'disabled'}>打つ(行動力1)</button>`;
+  }else{
+    const ws=me.weapons.map(w=>`<button class="opt" data-do="smW" data-v="${w.id}" aria-pressed="${sm.wid===w.id}" ${canUp(w)?'':'disabled'}>${chip(w.el)} ${wName(w)} ${wTrait(w)}<small>威力${w.power} → ${w.power+2} ・ ${w.plus>=MAXP?'これ以上は強化できない':upCost(w)}</small></button>`).join('');
+    const sel=me.weapons.find(w=>w.id===sm.wid);const ok=S.ap>=1&&sel&&canUp(sel);
+    body=`<div class="grp"><div class="k">強化する武器(+${MAXP}まで)</div><div class="opts">${ws}</div></div>
+    <button class="go" data-do="smUp" ${ok?'':'disabled'}>鍛え直す(行動力1)</button>`;
+  }
+  return `<h2>鍛冶場</h2>${apHtml()}
+  ${sm.msg?`<div class="msg"><p>${sm.msg}</p></div>`:''}
+  <div class="opts" style="margin-bottom:14px">${tabs}</div>${body}
+  <div class="row"><button class="ghost" data-do="goHome">戻る</button></div>`;
+}
+function tavernHtml(){
+  const me=S.me;
+  return `<h2>酒場</h2>${apHtml()}
+  ${S.sm.msg?`<div class="msg"><p>${S.sm.msg}</p></div>`:''}
+  <div class="opts">
+    <button class="opt" data-do="tvPotion" ${S.ap<1||me.ore<2||me.potions>=9?'disabled':''}>薬を調合する<small>鉄鉱2 → 薬1個(所持${me.potions}/9)</small></button>
+    <button class="opt" data-do="tvRumor" ${S.ap<1||S.rumor?'disabled':''}>噂を聞く<small>来週の敵の中心属性が分かる${S.rumor?'(聞いた)':''}</small></button>
+  </div>
+  <div class="row"><button class="ghost" data-do="goHome">戻る</button></div>`;
+}
+function weekendHtml(){
+  const L=S.last;
+  const rows=[
+    ['あなたの貢献',`+${L.mine.toFixed(1)}%`],
+    ['仲間たち(参加者全体)の自動進行',`+${L.npc}%`],
+    [L.boss?'守護者のHP':'踏破ゲージ',L.cleared?(L.bossKilled?'撃破':'突破'):`${Math.round(L.boss?100-L.gauge:L.gauge)}%`]
+  ].map(([k,v])=>`<li><span>${k}</span><b>${v}</b></li>`).join('');
+  const lines=L.L.length?`<div class="msg">${L.L.map(l=>`<p>${l}</p>`).join('')}</div>`:'';
+  return `<h2>週末の判定</h2><span class="stamp">判定済</span><p class="head">${L.head}</p><ul class="rows">${rows}</ul>${lines}
+  <p class="note">本番では全員の貢献を合算して、次の公開日に紙面が更新されます。この試作では下のボタンで次の週へ進めます。</p>
+  <div class="row"><button class="go" data-do="next">${S.finished?'もう一度この塔を見る':'来週の紙面を開く'}</button></div>`;
+}
+function renderStage(){
+  const v=S.view;
+  let h='';
+  if(v==='home')h=homeHtml();
+  else if(v==='report')h=reportHtml();
+  else if(v==='prep')h=prepHtml();
+  else if(v==='dive')h=diveHtml();
+  else if(v==='shop')h=shopHtml();
+  else if(v==='smith')h=smithHtml();
+  else if(v==='tavern')h=tavernHtml();
+  else if(v==='weekend')h=weekendHtml();
+  $('#stage').innerHTML=h;
+}
+function renderTower(){
+  let cells='';
+  for(let row=9;row>=0;row--)for(let c=1;c<=10;c++){
+    const f=row*10+c;
+    let cls='cell';if(f<S.floor||(S.finished&&f<=100))cls+=' done';else if(f===S.floor)cls+=' now';
+    if(f%10===0)cls+=' boss';
+    cells+=`<div class="${cls}" ${f===S.floor&&!S.finished?`style="--g:${S.gauge}%"`:''} title="第${f}層">${f%10===0||f===S.floor?f:''}</div>`;
+  }
+  $('#tower').innerHTML=`<h2>塔の見取り図</h2><div class="tower" role="img" aria-label="100層の塔。最前線は第${S.floor}層">${cells}</div>
+  <div class="legend"><span><i class="sw" style="background:var(--ink)"></i>踏破済み</span><span><i class="sw" style="background:var(--accent)"></i>最前線</span><span><i class="sw" style="border-color:var(--accent);border-width:2px"></i>守護者の層</span></div>`;
+}
+function renderBook(){
+  const m=S.me;
+  const need=nextExp(),cur=Math.pow(lv()-1,2)*20;
+  const cores=EL.map(e=>`${chip(e)}${m.core[e]}`).join(' ');
+  const ws=m.weapons.map(w=>`<li>${chip(w.el)} ${wName(w)} ${wTrait(w)} 威力${w.power}</li>`).join('');
+  const a=curArmor(),c=curAcc();
+  $('#book').innerHTML=`<h2>冒険者手帳</h2>
+  <div class="gl"><span>Lv${lv()} ・ 最大HP ${maxHp()}</span><b>経験値 ${m.exp}/${need}</b></div><div class="bar"><i style="width:${(m.exp-cur)/(need-cur)*100}%"></i></div>
+  <div class="kv" style="margin-top:10px"><span class="gold">${m.gold}G</span><span>薬 ${m.potions}</span></div>
+  <div class="kv"><span>防具: ${chip(a.el)} ${a.name}(防御${a.def})</span></div>
+  <div class="kv"><span>装飾: ${c?`${c.name}(${ACC[c.kind][1](c.t)})`:'なし'}</span></div>
+  <div class="kv"><span>潜行 ${m.dives}回</span><span>最深到達 第${m.best}層</span></div>
+  ${m.titles.length?`<div class="kv"><span>称号: ${m.titles.join(' / ')}</span></div>`:''}
+  <ul class="wlist">${ws}</ul>`;
+}
+function renderChron(){
+  const li=S.timeline.slice(0,10).map(t=>`<li><b>ターン${t.w}</b><span>${t.t}</span></li>`).join('');
+  $('#chron').innerHTML=`<h2>塔の年表</h2><ul class="chron">${li}</ul>`;
+}
+function render(){if(!S.dive&&S.policy)S.diveFloor=S.policy.mode==='push'?S.floor:clamp(S.policy.floor,1,S.floor);setEnemy(S.dive?S.dive.floor:clamp(S.diveFloor,1,S.floor));renderPaper();renderStage();renderTower();renderBook();renderChron()}
+
+/* ---------- events ---------- */
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-do]');if(!b||b.disabled)return;
+  const d=b.dataset.do,v=b.dataset.v,sm=S.sm,sh=S.shop;
+  switch(d){
+    case 'goHome':S.view='home';sm.msg='';sh.msg='';break;
+    case 'goPrep':S.view='prep';break;
+    case 'fl':S.diveFloor=v==='max'?S.floor:clamp(S.diveFloor+(+v),1,S.floor);break;
+    case 'toggleW':{const i=S.prep.indexOf(v);if(i>=0)S.prep.splice(i,1);else if(S.prep.length<3)S.prep.push(v);break}
+    case 'startDive':S.prep=S.prep.filter(id=>S.me.weapons.some(w=>w.id===id));startDive();break;
+    case 'door':enterRoom(S.dive.plan[S.dive.step][+v]);break;
+    case 'ev':evChoose(v);break;
+    case 'atk':playerAct('atk',v);break;
+    case 'bare':playerAct('bare');break;
+    case 'def':playerAct('def');break;
+    case 'potion':playerAct('potion');break;
+    case 'retreat':finishDive('flee');break;
+    case 'diveDone':S.dive=null;S.view='home';if(S.ap<2)nextTurn();break;
+    case 'endTurn':endTurn();break;
+    case 'resetAll':S=newWorld();break;
+    case 'stance':S.policy.stance=v;break;
+    case 'job':{if(!jobUnlocked()||!JOBS[v])break;const c=S.me.job&&S.me.job!==v?30*lv():0;if(c>S.me.gold)break;S.me.gold-=c;S.me.job=v;break}
+    case 'pmode':S.policy.mode=v;break;
+    case 'pfl':S.policy.floor=clamp(S.policy.floor+(+v),1,S.floor);break;
+    case 'pdives':S.policy.dives=+v;break;
+    case 'goShop':S.view='shop';break;
+    case 'shTab':sh.tab=v;sh.msg='';break;
+    case 'buyW':buy('W',v);break;
+    case 'buyA':buy('A',v);break;
+    case 'buyC':buy('C',v);break;
+    case 'buyP':buy('P');break;
+    case 'enhW':enhance('w',v);break;
+    case 'enhA':enhance('a',v);break;
+    case 'sellOre':sell('ore');break;
+    case 'sellCore':sell('core',v);break;
+    case 'sellW':sell('w',v);break;
+    case 'sellA':sell('a',v);break;
+    case 'sellC':sell('c',v);break;
+    case 'eqA':S.me.armor=v;break;
+    case 'eqC':S.me.acc=v;break;
+    case 'goSmith':S.view='smith';break;
+    case 'smTab':sm.tab=v;sm.msg='';break;
+    case 'smEl':sm.el=v;break;
+    case 'smDest':sm.dest=v;break;
+    case 'smW':sm.wid=v;break;
+    case 'smDo':craft(sm.el,sm.dest);break;
+    case 'smUp':upgrade(sm.wid);break;
+    case 'goTavern':S.view='tavern';sm.msg='';break;
+    case 'tvPotion':S.me.ore-=2;S.me.potions++;S.ap--;sm.msg='薬を調合した。';break;
+    case 'tvRumor':S.ap--;S.rumor=true;sm.msg=`酒場の噂では、来週の敵は${S.nextEl}属性が中心らしい。`;break;
+    case 'endWeek':endWeek();break;
+    case 'next':nextWeek();break;
+  }
+  render();
+});
+
+window.claude?.hot?.snapshot?.(()=>S);
+const boot=d=>{S=(d&&d.me&&d.sm&&d.shop&&d.me.armors)?d:newWorld();if(!S.policy)S.policy={mode:'push',floor:1,stance:'std',dives:3};if(S.view==='dive'||S.view==='prep'){S.dive=null;S.view='home'}render()};
+if(window.claude?.hot?.ready)window.claude.hot.ready(boot);else boot(window.claude?.hot?.data??{});
+</script>
+</body>
+</html>
