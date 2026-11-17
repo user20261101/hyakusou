@@ -140,7 +140,11 @@ function viewGo() {
   const p = state.prof;
   const weapons = state.items.filter((i) => i.kind === "W").sort((a, b) => ((b.data || {}).power || 0) - ((a.data || {}).power || 0));
   const prep = (Array.isArray(cur.prep) && cur.prep.length ? cur.prep : weapons.slice(0, 3).map((w) => w.id));
+  const tutOk = p.floor < 10 && p.floor < state.tower.front_floor;
   $("view").innerHTML = `
+    ${tutOk ? `<div class="card"><h2>チュートリアル (第1〜9層)</h2>
+      <div class="sub">ターンを待たずに、いつでもすぐ冒険できます。第10層の守護者からは、週2回のターンで挑みます。戦い方と武器は、下で提出した方針が使われます(未提出なら標準・強い武器3本)。</div>
+      <div style="margin-top:10px"><button class="primary" id="btnTut">冒険に出る</button></div>${msgHtml()}</div>` : ""}
     <div class="card"><h2>今回の方針 (第${state.tower.turn}ターン)</h2>
       ${state.order && state.order.turn === state.tower.turn ? '<div class="sub">提出済み。ターン処理まで何度でも変更できます。</div>' : '<div class="sub">未提出。出さなくても前回の方針で進みます。</div>'}
       <div class="dim" style="margin-top:8px">進み方</div>
@@ -171,6 +175,13 @@ function viewGo() {
   let m = mode, s = stance;
   document.querySelectorAll("#mode button").forEach((b) => b.onclick = () => { m = b.dataset.v; document.querySelectorAll("#mode button").forEach((x) => x.classList.toggle("on", x === b)); $("farmBox").classList.toggle("hide", m !== "farm"); });
   document.querySelectorAll("#stance button").forEach((b) => b.onclick = () => { s = b.dataset.v; document.querySelectorAll("#stance button").forEach((x) => x.classList.toggle("on", x === b)); });
+  if ($("btnTut")) $("btnTut").onclick = async () => {
+    $("btnTut").disabled = true;
+    const { data, error } = await sb.rpc("run_tutorial");
+    if (error) return say(error.message, true);
+    if (!data.ok) return say(data.msg, true);
+    state.tut = data; await loadAll(); state.tab = "rep"; state.msg = ""; render();
+  };
   $("btnSend").onclick = async () => {
     const policy = { mode: m, stance: s, prep: [...document.querySelectorAll("#prep input:checked")].map((x) => x.value).slice(0, 3) };
     if (m === "farm") policy.floor = Math.max(1, Math.min(p.floor, parseInt($("floor").value || "1", 10)));
@@ -203,13 +214,29 @@ function viewGo() {
 }
 
 /* ---- 結果 ---- */
+function diveCards(dives) {
+  return (dives || []).map((d) => `<div class="card"><details><summary>第${d.floor}層(${esc(d.el)}) — ${({clear:"突破",faint:"力尽きた",flee:"撤退"})[d.reason] || esc(d.reason)}　<span class="dim">${d.gold}G / EXP ${d.exp}${(d.drops || []).length ? " / 戦利品" + d.drops.length : ""}</span></summary>
+      ${(d.drops || []).map((x) => `<div class="r${(x.rar || 0) + 1}">▸ ${esc(x.name)}</div>`).join("")}
+      <div class="log">${esc((d.lines || []).join("\n"))}</div></details></div>`).join("");
+}
+function tutHtml() {
+  const t = state.tut; if (!t) return "";
+  const lvUp = t.lv1 > t.lv0 ? `<span class="lv"> Lv${t.lv0}→Lv${t.lv1}</span>` : ` Lv${t.lv1}`;
+  return `<div class="card"><h2>いまの冒険(チュートリアル)</h2><div class="kv">
+      <b>階層</b><span>第${t.floor0}層 → 第${t.floor1}層</span>
+      <b>経験値</b><span>+${t.exp1 - t.exp0}${lvUp}</span>
+      <b>所持金</b><span>${t.gold0}G → ${t.gold1}G</span></div>
+      ${t.floor1 < 10 ? '<div class="sub" style="margin-top:6px">もう一度「出撃」タブから冒険できます。装備を整えるのもおすすめです。</div>' : '<div class="sub" style="margin-top:6px">第10層に着きました。ここからは守護者戦です。方針を出して、ターンの処理を待ちましょう。</div>'}</div>
+    ${diveCards(t.dives)}`;
+}
 function viewRep() {
   const r = state.report;
-  if (!r) { $("view").innerHTML = `<div class="card"><h2>結果</h2><div class="dim">まだ結果がありません。方針を出して、ターンが進むのを待ちましょう。</div></div>`; return; }
+  if (!r) {
+    if (state.tut) { $("view").innerHTML = tutHtml(); return; } $("view").innerHTML = `<div class="card"><h2>結果</h2><div class="dim">まだ結果がありません。方針を出して、ターンが進むのを待ちましょう。</div></div>`; return; }
   const b = r.body || {};
   const dives = b.dives || [];
   const lvUp = b.lv1 > b.lv0 ? `<span class="lv"> Lv${b.lv0}→Lv${b.lv1}</span>` : ` Lv${b.lv1}`;
-  $("view").innerHTML = `
+  $("view").innerHTML = tutHtml() + `
     <div class="card"><h2>第${r.turn}ターンの結果</h2>
       <div class="kv">
         <b>階層</b><span>第${b.floor0}層 → 第${b.floor1}層</span>
@@ -217,9 +244,7 @@ function viewRep() {
         <b>所持金</b><span>${b.gold0}G → ${b.gold1}G (${(b.gold1 - b.gold0 >= 0 ? "+" : "")}${b.gold1 - b.gold0})</span>
         ${b.boss_dmg ? `<b>守護者へ</b><span>${b.boss_dmg} ダメージ</span>` : ""}
       </div></div>
-    ${dives.map((d) => `<div class="card"><details><summary>第${d.floor}層(${esc(d.el)}) — ${({clear:"突破",faint:"力尽きた",flee:"撤退"})[d.reason] || esc(d.reason)}　<span class="dim">${d.gold}G / EXP ${d.exp}${(d.drops || []).length ? " / 戦利品" + d.drops.length : ""}</span></summary>
-      ${(d.drops || []).map((x) => `<div class="r${(x.rar || 0) + 1}">▸ ${esc(x.name)}</div>`).join("")}
-      <div class="log">${esc((d.lines || []).join("\n"))}</div></details></div>`).join("")}`;
+    ${diveCards(dives)}`;
 }
 
 /* ---- 装備 ---- */
