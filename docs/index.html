@@ -217,7 +217,10 @@ async function loadAll() {
 function enterTown() { $("story").classList.add("hide"); $("app").classList.remove("hide"); S.view = "town"; render(); }
 
 /* ================= 画面 ================= */
-function say(m, err) { S.msg = m; S.err = !!err; render(); }
+function say(m, err) {
+  if (/Failed to fetch|NetworkError|Load failed/i.test(String(m))) m = "通信に失敗しました。電波の良い所で、もう一度押してください。(押した内容はまだ反映されていません)";
+  S.msg = m; S.err = !!err; render();
+}
 const msgHtml = () => `<div class="msg ${S.err ? "err" : ""}">${esc(S.msg)}</div>`;
 const TABS = [["town", "町"], ["shop", "道具屋"], ["bag", "持ち物"]];
 
