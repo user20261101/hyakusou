@@ -339,6 +339,7 @@ async function loadAll() {
   ]);
   S.town = tn && tn.data ? tn.data : S.town || null;
   S.p = p.data; S.bag = b.data || []; S.log = (l.data || [])[0] ? l.data[0].body : null;
+  S.planSaved = pl.data ? { go: pl.data.go, farm_floor: pl.data.farm_floor } : null;
   S.plan = pl.data || { go: "up" };
   if (S.plan.farm_floor && S.plan.farm_floor > S.p.frontier - 1) S.plan.farm_floor = null;
   if (S.plan.go === "stay" && !S.plan.farm_floor) S.plan.go = "up";
@@ -351,6 +352,14 @@ const TABS = [["town", "作戦"], ["report", "日報"], ["plaza", "町"], ["shop
 const guardianOf = (f) => (S.guardians || []).find((g) => g.floor === f);
 const lockedFloor = () => { const g = (S.guardians || []).find((g) => !g.defeated); return g ? g.floor : null; };
 
+function cdText() {
+  const se = S.season, sv = S.planSaved;
+  let left = "";
+  if (se && se.next_at) { const ms = new Date(se.next_at) - Date.now(); if (ms > 0) { const h = Math.floor(ms / 36e5), m = Math.floor((ms % 36e5) / 6e4); left = h >= 24 ? `${Math.floor(h / 24)}日${h % 24}時間` : `${h}時間${m}分`; } else left = "まもなく"; }
+  const plan = !S.p.first_done ? "最初の冒険へ" : sv ? (sv.go === "stay" && sv.farm_floor ? `${sv.farm_floor}階で稼ぐ` : "最前線に挑む") : "未決定(前回と同じ)";
+  return `次の日報まで ${left || "未定"} ／ 今日の作戦: <b style="color:${sv || !S.p.first_done ? "#ebe8df" : "#ffe27a"}">${plan}</b>`;
+}
+setInterval(() => { const e = document.getElementById("cd"); if (e && S.p && S.season) e.innerHTML = cdText(); }, 30000);
 const wAtk = (b) => (b ? defOf(b.def_id).atk + (b.plus || 0) : 0);
 const sDef = (b) => (b ? defOf(b.def_id).def + (b.plus || 0) : 0);
 const slotHtml = (b, k) => `<div class="slot ${b ? "on" : ""}" title="${b ? esc(nameOf(b)) : ""}">${b ? PX.item(b.def_id, 30) + `<small>${k === "W" ? wAtk(b) : sDef(b)}</small>` : ""}</div>`;
@@ -362,6 +371,7 @@ function render() {
   $("head").innerHTML = `<div class="card"><div class="hud">${PX.icon("hero", 56)}
     <div class="who"><div class="row" style="gap:6px"><b>${esc(p.name)}</b><span class="lv">Lv${lv}</span><span class="grow"></span><span class="stat">${PX.icon("coin", 18)}<b>${p.gold}</b>G</span></div>
     <div class="hpb">${segs}</div><div class="sub">あと ${nextExp(lv) - p.exp} でレベルアップ ・ HP ${maxHp(lv)}</div></div></div>
+    <div class="sub" id="cd" style="margin-top:6px">${cdText()}</div>
     <div class="slots">${slotHtml(w, "W")}${slotHtml(s, "S")}<span class="stat" style="margin-left:6px">${PX.icon("herb", 26)}×${p.herbs}</span><span class="grow"></span><span>攻${wAtk(w)} 防${sDef(s)}</span></div></div>`;
   const ICON = { town: ["door", "出撃"], report: ["flag", "日報"], plaza: ["inn", "町"], shop: ["coin", "道具屋"], bag: ["chest_closed", "持ち物"] };
   $("tabs").innerHTML = TABS.map(([k]) => `<button data-k="${k}" class="${S.view === k ? "on" : ""}">${PX.icon(ICON[k][0], 24)}${ICON[k][1]}</button>`).join("");
@@ -431,7 +441,7 @@ function viewTown() {
       ${towerHtml(p, pl)}
       <div class="panel"><b>${f}階</b> ― ${info}</div>
       <div style="margin-top:10px"><button class="primary" id="go" style="width:100%;padding:12px;font-size:16px">${p.first_done ? "この階で決定" : "最初の冒険に出発"}</button></div>${msgHtml()}</div>
-    ${S.log ? `<div class="card"><h2>前回の結果</h2>${logSummary(S.log)}${(S.log.recap || []).length ? `<div class="log">${S.log.recap.map((l) => `<div>${esc(l)}</div>`).join("")}</div>` : ""}</div>` : ""}
+    ${S.log ? `<div class="card"><h2>前回の結果</h2>${logSummary(S.log)}${lootHtml(S.log)}${(S.log.recap || []).length ? `<div class="log">${S.log.recap.map((l) => `<div>${esc(l)}</div>`).join("")}</div>` : ""}${tipHtml(S.log)}</div>` : ""}
     <div class="card"><h2>アカウント</h2>
       ${S.user.is_anonymous ? `<div class="dim">ゲスト中です。ブラウザやスマホを変えても続けるには、IDを登録してください。</div>
       <div class="row" style="margin-top:6px"><input id="rgMail" type="email" placeholder="メールアドレス" class="grow"><input id="rgPass" type="password" placeholder="パスワード(8文字以上)" class="grow"><button id="btnReg">登録</button></div>`
@@ -493,13 +503,32 @@ function logSummary2(b) {
     ${b.result === "dead" && b.lost_items ? `<b>失った物</b><span class="res-faint">拾い物 ${b.lost_items}個</span>` : ""}
     ${b.turn ? `<b>ターン</b><span>第${b.turn}ターン</span>` : ""}</div>`;
 }
-function viewResult() {
-  const b = S.result, jp = (b.jackpot || []);
+function lootHtml(b) {
+  const jp = b.jackpot || [];
   const chests = jp.map((j) => `<div class="chestbox"><div class="pop" style="display:inline-block">${PX.icon("chest_open", 64, "shine")}</div><div class="price">${esc(j.item)}</div></div>`).join("")
     + (b.items || []).map((n, i) => `<div class="chestbox"><div class="pop" style="display:inline-block;animation-delay:${i * .15}s">${PX.icon("chest_closed", 48)}</div><div>${esc(n)}</div></div>`).join("");
+  return chests ? `<div class="loot">${chests}</div>` : "";
+}
+function tipOf(b) {
+  const p = S.p, lv = b.lv1 || lvOf(p.exp);
+  if (b.result === "dead" || b.result === "faint" || (b.result === "guardian" && b.dead)) {
+    if (b.result === "guardian") return "守護者は強い。装備を整えて、レベルを上げてから挑むと、与えるダメージが増える。";
+    if (p.herbs < 3) return "薬草が少なかった。道具屋で買い足しておくと、倒れにくくなる。";
+    if (b.floor >= lv * 1.2) return "この階には、まだ早かったかもしれない。突破した階で稼いで、レベルを上げよう。";
+    return "運が悪かった。装備を見直して、もう一度挑もう。";
+  }
+  if ((b.jackpot || []).length) return "大当たり! 装備は自動で付け替わる。持ち物で確認しよう。";
+  if (b.lv1 > b.lv0) return "レベルが上がった。そろそろ、一つ上の階を狙えるかもしれない。";
+  if (b.result === "guardian") return "ダメージは全員の分が合算される。明日も、削り続けよう。";
+  return `次のレベルまで、あと ${nextExp(lvOf(p.exp)) - p.exp}。`;
+}
+const tipHtml = (b) => `<div class="panel" style="margin-top:8px">ひとこと: ${esc(tipOf(b))}</div>`;
+
+function viewResult() {
+  const b = S.result;
   $("view").innerHTML = `<div class="card"><h2>${b.floor}階の冒険</h2>${logSummary(b)}
-    ${chests ? `<div class="loot">${chests}</div>` : ""}
-    <div class="log">${(b.recap || []).map((l) => `<div>${esc(l)}</div>`).join("")}</div>
+    ${lootHtml(b)}
+    <div class="log">${(b.recap || []).map((l) => `<div>${esc(l)}</div>`).join("")}</div>${tipHtml(b)}
     <div class="sub" style="margin-top:8px">ここまでが、最初の冒険です。これからは、階を決めておくと、平日の昼に自動で冒険に出ます。</div>
     <div style="margin-top:12px"><button class="primary" id="back">町へ戻る</button></div></div>`;
   $("back").onclick = () => { S.result = null; render(); };
