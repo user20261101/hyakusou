@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>百層週報</title>
+<title>百層日報</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#0f1117;--panel:#1a1d27;--line:#2c3140;--ink:#ebe8df;--dim:#8d91a0;--gold:#d9b45b;--red:#d9625b;--green:#6fbf8c;--blue:#6aa6d9}
@@ -71,8 +71,8 @@ button:disabled{opacity:.45;cursor:default}
 </head>
 <body>
 <div class="wrap">
-  <h1>百層週報</h1>
-  <div class="sub">みんなで登る、週2回動く塔</div>
+  <h1>百層日報</h1>
+  <div class="sub">みんなで登る、平日の昼に動く塔</div>
 
   <div id="login" class="card hide">
     <h2>はじめる</h2>
@@ -128,9 +128,9 @@ const INTRO = [
   { bg: "tower", who: "トマ", t: `この街に流れ着いた者は、いつか必ずあの塔に登ることになる。……あんたもだ、${NAME}。` },
   { bg: "tower", who: "トマ", t: "塔は10階ごとに守護者が居座っている。そいつを倒さないと、先へは進めない。" },
   { bg: "tower", who: "トマ", t: "一人じゃ無理だ。だが、塔にはあんたの他にも、大勢の冒険者が挑んでる。みんなの力を合わせて倒すんだ。" },
-  { bg: "trial", who: "トマ", t: "塔は、週に2回、夜に動く。出発の前に、あんたは「作戦」を決めておけ。" },
-  { bg: "trial", who: "トマ", t: "決めるのは3つだけだ。どこへ行くか。何を持っていくか。どう構えるか。" },
-  { bg: "trial", who: "トマ", t: "あとは冒険者が勝手にやってくれる。結果は、次の夜に報せが届く。" },
+  { bg: "trial", who: "トマ", t: "塔は、平日の昼に、毎日1回動く。出発の前に、あんたは「作戦」を決めておけ。" },
+  { bg: "trial", who: "トマ", t: "決めるのは1つだけだ。上に進むか、今いる階にとどまるか。" },
+  { bg: "trial", who: "トマ", t: "あとは冒険者が勝手にやってくれる。結果は、日報で届く。決めなけりゃ、昨日と同じ作戦で動くぞ。" },
   { bg: "trial", who: "トマ", t: "倒れちまうと、その冒険で手に入れた物は、全部なくなる。薬草は命綱だ。ケチるなよ。" },
   { bg: "trial", who: "トマ", t: "戻ったら、要らない物は俺の店で売れ。その金で、もっといい武器や盾を買うんだ。" },
   { bg: "trial", who: "トマ", t: "ほら、餞別だ。木の棒と、皮の盾と、薬草を3つ。" },
@@ -232,15 +232,13 @@ async function loadAll() {
     sb.from("turns").select("*").order("n", { ascending: false }).limit(1),
   ]);
   S.p = p.data; S.bag = b.data || []; S.log = (l.data || [])[0] ? l.data[0].body : null;
-  S.plan = pl.data || { floor: 1, depth: 1, herbs: Math.min(3, S.p.herbs), stance: "normal" };
+  S.plan = pl.data || { go: "up" };
   S.season = se.data; S.guardians = gu.data || []; S.turn = (tu.data || [])[0] || null;
-  S.plan.floor = Math.min(S.plan.floor, S.p.frontier);
 }
 function enterTown() { $("story").classList.add("hide"); $("app").classList.remove("hide"); S.view = "town"; render(); }
 
 /* ================= 画面 ================= */
-const TABS = [["town", "作戦"], ["report", "週報"], ["shop", "道具屋"], ["bag", "持ち物"]];
-const STANCE = { careful: ["慎重", "HPが減ると早めに引き返す。強敵は避ける。"], normal: ["ふつう", "バランスよく進む。"], bold: ["大胆", "HPが低くても進む。強敵や宝を狙う。"] };
+const TABS = [["town", "作戦"], ["report", "日報"], ["shop", "道具屋"], ["bag", "持ち物"]];
 const guardianOf = (f) => (S.guardians || []).find((g) => g.floor === f);
 const lockedFloor = () => { const g = (S.guardians || []).find((g) => !g.defeated); return g ? g.floor : null; };
 
@@ -264,28 +262,15 @@ const msgHtml = () => `<div class="msg ${S.err ? "err" : ""}">${esc(S.msg)}</div
 function viewTown() {
   const p = S.p, pl = S.plan, se = S.season, L = lockedFloor();
   if (S.result) return viewResult();
-  const maxF = Math.min(p.frontier, se ? se.top : 30);
-  const chips = Array.from({ length: maxF }, (_, i) => i + 1).map((f) => {
-    const g = guardianOf(f);
-    return `<button data-f="${f}" class="${pl.floor === f ? "on" : ""}">${g && !g.defeated ? f + "F 守護者" : f + "F"}</button>`;
-  }).join("");
-  const isG = L !== null && pl.floor === L;
-  const canDeep = !isG && (L === null || pl.floor + 1 < L) && pl.floor + 1 < (se ? se.top : 30);
-  const maxHerb = Math.min(9, p.herbs);
-  if (pl.herbs > maxHerb) pl.herbs = maxHerb;
-  const g = L !== null ? guardianOf(L) : null;
+  const g = L !== null && p.frontier >= L ? guardianOf(L) : null;
+  const stayF = Math.max(1, p.frontier - 1);
+  const goBtn = (k, title, sub) => `<button data-go="${k}" class="${pl.go === k ? "on" : ""}" style="display:block;width:100%;text-align:left;margin-top:6px;padding:10px"><b>${title}</b><div class="sub">${sub}</div></button>`;
   $("view").innerHTML = `
     <div class="card"><h2>作戦 ― 次のターン${se && se.next_at ? "は " + new Date(se.next_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "の日時は未定"}</h2>
-      <div class="sub">${p.first_done ? "締切までは何度でも変えられます。結果は、ターンの処理後に週報で届きます。" : "最初の1回だけは、今すぐ出発して結果を見られます。"}</div>
-      <div style="margin-top:10px"><b>行き先</b></div><div class="floors" style="margin-top:4px">${chips}</div>
-      ${isG && g ? `<div class="sub" style="margin-top:4px">守護者「${esc(g.name)}」 残りHP ${g.hp}/${g.mhp}。全員のダメージが合算されます。</div>` : ""}
-      <div style="margin-top:10px"><b>深さ</b></div>
-      <div class="row" style="margin-top:4px"><button data-d="1" class="${pl.depth === 1 || !canDeep ? "on" : ""}">1階だけ</button><button data-d="2" class="${pl.depth === 2 && canDeep ? "on" : ""}" ${canDeep ? "" : "disabled"}>2階まとめて</button></div>
-      <div style="margin-top:10px"><b>荷物</b><span class="dim"> 薬草を持っていく数(所持 ${p.herbs})</span></div>
-      <div class="row" style="margin-top:4px"><button id="hm" ${pl.herbs <= 0 ? "disabled" : ""}>−</button><b style="min-width:2em;text-align:center">${pl.herbs}</b><button id="hp" ${pl.herbs >= maxHerb ? "disabled" : ""}>＋</button></div>
-      <div style="margin-top:10px"><b>構え</b></div>
-      <div class="row" style="margin-top:4px">${Object.entries(STANCE).map(([k, v]) => `<button data-s="${k}" class="${pl.stance === k ? "on" : ""}">${v[0]}</button>`).join("")}</div>
-      <div class="sub">${STANCE[pl.stance][1]}</div>
+      <div style="font-size:18px;margin-top:4px">あなたの到達階 <b>${p.frontier}階</b></div>
+      <div class="sub">${p.first_done ? "締切までは何度でも変えられます。決めなかった日は、前回と同じ作戦で動きます。" : "最初の1回だけは、今すぐ出発して結果を見られます。"}</div>
+      ${goBtn("up", "上に進む", g ? `守護者「${esc(g.name)}」に挑む。残りHP ${g.hp}/${g.mhp}。全員のダメージが合算されます。` : `${p.frontier}階に挑む。うまくいけば、到達階が上がります。危険も大きい。`)}
+      ${goBtn("stay", "階にとどまる", `${stayF}階で安全に稼ぐ。得られる物は少なめですが、倒れにくい。`)}
       <div style="margin-top:12px"><button class="primary" id="go">${p.first_done ? "この作戦で決定" : "最初の冒険に出発"}</button></div>${msgHtml()}</div>
     ${S.log ? `<div class="card"><h2>前回の結果</h2>${logSummary(S.log)}${(S.log.recap || []).length ? `<div class="log">${S.log.recap.map((l) => `<div>${esc(l)}</div>`).join("")}</div>` : ""}</div>` : ""}
     <div class="card"><h2>アカウント</h2>
@@ -295,15 +280,10 @@ function viewTown() {
       <div style="margin-top:10px" class="row"><button id="btnOut">ログアウト</button><button id="btnReset">最初からやり直す</button></div>
       <div class="sub">「最初からやり直す」を押すと、このキャラクターのデータが消えて、オープニングからになります。</div></div>`;
   const v = $("view");
-  v.querySelectorAll(".floors button").forEach((b) => b.onclick = () => { pl.floor = +b.dataset.f; if (pl.depth === 2) pl.depth = 1; render(); });
-  v.querySelectorAll("[data-d]").forEach((b) => b.onclick = () => { pl.depth = +b.dataset.d; render(); });
-  v.querySelectorAll("[data-s]").forEach((b) => b.onclick = () => { pl.stance = b.dataset.s; render(); });
-  $("hm").onclick = () => { pl.herbs = Math.max(0, pl.herbs - 1); render(); };
-  $("hp").onclick = () => { pl.herbs = Math.min(maxHerb, pl.herbs + 1); render(); };
+  v.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => { pl.go = b.dataset.go; render(); });
   $("go").onclick = async () => {
     $("go").disabled = true;
-    const depth = canDeep ? pl.depth : 1;
-    const { data, error } = await sb.rpc("t_plan_set", { p_floor: pl.floor, p_depth: depth, p_herbs: pl.herbs, p_stance: pl.stance });
+    const { data, error } = await sb.rpc("t_plan_go", { p_go: pl.go });
     if (error) return say(error.message, true);
     if (!data.ok) return say(data.msg, true);
     if (!p.first_done) {
@@ -344,25 +324,40 @@ function viewResult() {
   const b = S.result;
   $("view").innerHTML = `<div class="card"><h2>${b.floor}階の冒険</h2>${logSummary(b)}
     <div class="log">${(b.recap || []).map((l) => `<div>${esc(l)}</div>`).join("")}</div>
-    <div class="sub" style="margin-top:8px">ここまでが、最初の冒険です。これからは、作戦を決めておくと、ターンごとに自動で冒険に出ます。</div>
+    <div class="sub" style="margin-top:8px">ここまでが、最初の冒険です。これからは、作戦を決めておくと、平日の昼に自動で冒険に出ます。</div>
     <div style="margin-top:12px"><button class="primary" id="back">町へ戻る</button></div></div>`;
   $("back").onclick = () => { S.result = null; render(); };
 }
 
+const pickLine = (x) => {
+  if (x.text) return esc(x.text);
+  const n = esc(x.name);
+  return ({
+    front: `${n}が、第${x.floor}層に一番乗りした。`,
+    newfloor: `${n}が、第${x.floor}層に到達した。`,
+    rare: `${n}が、${x.floor}階で「${esc(x.detail)}」を手に入れた。`,
+    lvup: `${n}が、レベル${esc(x.detail)}まで一気に成長した。`,
+    guardian_mvp: `${n}が、${x.floor}階の守護者に${x.dmg}ダメージを与えた。`,
+    guardian_kill: `${n}が、守護者「${esc(x.detail)}」にとどめを刺した!`,
+  })[x.kind] || `${n}の活躍。`;
+};
 function viewReport() {
   const t = S.turn, gs = S.guardians || [];
   const gHtml = gs.map((g) => { const pct = Math.round((g.hp / g.mhp) * 100);
     return `<div class="item"><div class="nm">${g.floor}F ${esc(g.name)}<div class="hpbar en" style="margin-top:4px"><i style="width:${g.defeated ? 0 : pct}%"></i></div>
       <div class="sub">${g.defeated ? `討伐済み(${esc(g.first_by || "")}が最後の一撃)` : `残りHP ${g.hp}/${g.mhp}`}</div></div></div>`; }).join("");
-  if (!t) { $("view").innerHTML = `<div class="card"><h2>週報</h2><div class="dim">最初のターンが処理されると、ここに週報が届きます。</div></div><div class="card"><h2>守護者</h2>${gHtml}</div>`; return; }
+  if (!t) { $("view").innerHTML = `<div class="card"><h2>日報</h2><div class="dim">最初のターンが処理されると、ここに日報が届きます。</div></div><div class="card"><h2>守護者</h2>${gHtml}</div>`; return; }
   const b = t.body || {};
-  const cont = Object.entries(b.contrib || {}).map(([f, arr]) => `<div class="sub" style="margin-top:6px">${f}階の守護者への貢献</div>` + arr.slice(0, 5).map((c, i) => `<div>${i + 1}. ${esc(c.name)} <span class="dim">${c.dmg}ダメージ${c.dead ? "(力尽きた)" : ""}</span></div>`).join("")).join("");
+  const f = b.front || {};
+  const frontLine = f.top_floor ? `最前線は第${f.top_floor}層。` + (f.dist && f.dist.length ? " " + f.dist.map((d) => `${d.floor}階に${d.n}人`).join("、") + "。" : "") : "";
+  const cont = Object.entries(b.contrib || {}).map(([fl, arr]) => `<div class="sub" style="margin-top:6px">${fl}階の守護者への貢献</div>` + arr.slice(0, 5).map((c, i) => `<div>${i + 1}. ${esc(c.name)} <span class="dim">${c.dmg}ダメージ${c.dead ? "(力尽きた)" : ""}</span></div>`).join("")).join("");
   $("view").innerHTML = `
-    <div class="card"><h2>第${t.n}ターンの週報</h2><div style="font-size:17px;line-height:1.6">${esc(t.headline || "")}</div>
+    <div class="card"><h2>第${t.n}ターンの日報</h2><div style="font-size:17px;line-height:1.6">${esc(t.headline || "")}</div>
       <div class="sub" style="margin-top:6px">冒険者 ${b.players + b.bots}人 ・ 探索 ${b.dives}回 ・ 守護者戦 ${b.guardian_fights}回 ・ 倒れた人 ${(b.deaths || []).length}人</div></div>
+    <div class="card"><h2>最前線ニュース</h2><div style="line-height:1.7;white-space:pre-wrap">${esc(b.news || frontLine || "動きはありませんでした。")}</div></div>
+    ${(b.pickups || []).length ? `<div class="card"><h2>ピックアップ</h2>${b.pickups.map((x) => `<div style="margin:6px 0">${pickLine(x)}</div>`).join("")}</div>` : ""}
     <div class="card"><h2>守護者</h2>${gHtml}${cont}</div>
-    <div class="card"><h2>最深到達ランキング</h2>${(b.top || []).map((x, i) => `<div>${i + 1}. ${esc(x.name)} <span class="dim">${x.frontier}階 ・ Lv${x.lv}${x.bot ? " ・ ボット" : ""}</span></div>`).join("")}</div>
-    ${(b.notable || []).length ? `<div class="card"><h2>今週の大物ドロップ</h2>${b.notable.map((n) => `<div>${esc(n.name)}が${n.floor}階で「${esc(n.item)}」を手に入れた。</div>`).join("")}</div>` : ""}
+    <div class="card"><h2>到達階ランキング</h2>${(b.top || []).map((x, i, a) => `<div>${i > 0 && a[i - 1].frontier === x.frontier ? "&nbsp;&nbsp;&nbsp;" : i + 1 + "."} ${esc(x.name)} <span class="dim">${x.frontier}階${x.bot ? " ・ ボット" : ""}</span></div>`).join("")}</div>
     ${(b.deaths || []).length ? `<div class="card"><h2>倒れた冒険者</h2>${b.deaths.slice(0, 8).map((d) => `<div>${esc(d.name)} ― ${d.floor}階${d.cause ? "で" + esc(d.cause) + "に" : "で"}倒れた</div>`).join("")}</div>` : ""}`;
 }
 
