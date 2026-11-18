@@ -168,12 +168,17 @@ svg.px.inl{display:inline-block;vertical-align:middle}
 .wrap{padding-bottom:110px}
 #tabs.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:#161022;border-top:4px solid #1b1226;box-shadow:0 -2px 0 #5a4a78;justify-content:center}
 #tabs.tabs button{max-width:110px}
+/* 上部(タイトルとステータス)を固定 */
+#top{position:sticky;top:0;z-index:6;background:#161022;margin:0 -14px;padding:4px 14px 2px;border-bottom:4px solid #1b1226;box-shadow:0 2px 0 #5a4a78}
+#top .card{margin:6px 0 4px}
+#top h1{margin:2px 0 0}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>百層日報</h1>
+  <div id="top"><h1>百層日報</h1>
   <div class="sub">みんなで登る、平日の昼に動く塔</div>
+  <div id="head"></div></div>
 
   <div id="login" class="card hide">
     <h2>はじめる</h2>
@@ -189,7 +194,6 @@ svg.px.inl{display:inline-block;vertical-align:middle}
   </div>
 
   <div id="app" class="hide">
-    <div id="head"></div>
     <div class="tabs" id="tabs"></div>
     <div id="view"></div>
   </div>
