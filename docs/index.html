@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>百層日報</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<script src="pixel.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#0f1117;--panel:#1a1d27;--line:#2c3140;--ink:#ebe8df;--dim:#8d91a0;--gold:#d9b45b;--red:#d9625b;--green:#6fbf8c;--blue:#6aa6d9}
@@ -94,6 +96,58 @@ button:disabled{opacity:.45;cursor:default}
 @media (max-width:640px){.np .cols,.np .strip{grid-template-columns:1fr}.np .main{border-right:none;padding-right:0}.np .side{padding-left:0;border-top:1px solid var(--rule)}}
 .jackpot{margin:8px 0;padding:10px;border-radius:8px;text-align:center;font-weight:bold;color:#2b1d00;background:linear-gradient(90deg,#ffd45a,#fff1a8,#ffd45a);box-shadow:0 0 14px #ffd45a99}
 .jackpot .jp-sub{font-weight:normal;font-size:13px;margin-top:2px}
+/* ===== ドット絵テーマ ===== */
+body{font-family:"DotGothic16","Hiragino Sans","Yu Gothic",system-ui,sans-serif;background:#161022;background-image:linear-gradient(#ffffff06 1px,transparent 1px),linear-gradient(90deg,#ffffff06 1px,transparent 1px);background-size:8px 8px}
+:root{--panel:#2a2034;--line:#1b1226;--gold:#f4c534;--green:#58c26a;--red:#e8604f}
+h1{font-family:"DotGothic16",serif;letter-spacing:.3em;text-shadow:3px 3px 0 #000}
+svg.px{image-rendering:pixelated;display:block;flex:none}
+.card{border-radius:0;border:3px solid #1b1226;box-shadow:inset 0 0 0 2px #5a4a78,3px 3px 0 #0008;background:#2a2034}
+button,input{border-radius:0;border:3px solid #1b1226;background:#4a3d66;box-shadow:inset -2px -2px 0 #0005,inset 2px 2px 0 #ffffff25;font-family:inherit}
+button:active:not(:disabled){transform:translate(1px,1px)}
+button.primary,button.on{background:#f4c534;color:#2b1d00;box-shadow:inset -2px -2px 0 #b9831c,inset 2px 2px 0 #fff3b0}
+.bar,.hpbar{border-radius:0;border:2px solid #1b1226;background:#120b1c}.bar i{background:#f4c534}
+.tabs button{padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px}
+.hud{display:flex;gap:10px;align-items:center}
+.hud .who{flex:1;min-width:0}
+.stat{display:flex;align-items:center;gap:4px;font-size:13px}
+.hpb{height:10px;background:#120b1c;border:2px solid #1b1226;margin-top:3px;display:flex;gap:1px;padding:1px}.hpb i{flex:1;background:#58c26a}
+.slots{display:flex;gap:6px;margin-top:6px;align-items:center;font-size:12px;color:#cfc8e0}
+button.slot{background:#120b1c}.slot{width:42px;height:42px;background:#120b1c;border:3px solid #1b1226;box-shadow:inset 0 0 0 1px #5a4a78;display:flex;align-items:center;justify-content:center;position:relative}
+.slot.on,.slot.eqd{box-shadow:inset 0 0 0 2px #f4c534}
+.slot small{position:absolute;right:1px;bottom:-1px;font-size:10px;color:#fff;text-shadow:1px 1px 0 #000}
+/* 塔 */
+.tower{border:4px solid #1b1226;border-top:0;background:#3b3550;background-image:repeating-linear-gradient(0deg,#0003 0 2px,transparent 2px 22px),repeating-linear-gradient(90deg,#0002 0 2px,transparent 2px 28px);max-height:380px;overflow-y:auto;box-shadow:inset 0 0 0 3px #6b6385}
+.tower .roof{height:16px;background:#6b6385;border-bottom:4px solid #1b1226;margin:0 -4px}
+.fl{display:flex;align-items:center;gap:6px;width:100%;min-height:46px;padding:2px 8px;border:0;border-bottom:3px solid #1b1226;background:transparent;box-shadow:none;text-align:left;color:#ebe8df}
+.fl .no{width:38px;font-size:15px;color:#f4c534;text-shadow:1px 1px 0 #000}
+.fl .mid{flex:1;display:flex;align-items:center;gap:6px;min-width:0;font-size:12px;color:#cfc8e0}
+.fl.sel{background:#f4c53433;box-shadow:inset 0 0 0 3px #f4c534}
+.fl.fog{background:#120b1caa;color:#5a4a78;cursor:default}
+.fl.front .no::after{content:"";}
+.fl .hp{width:70px;height:8px;background:#120b1c;border:2px solid #1b1226}.fl .hp i{display:block;height:100%;background:#e8604f}
+.fl .rt{font-size:11px;color:#ffe27a}
+.hot{background:linear-gradient(90deg,#f4c53422,transparent)}
+.hero-bob{animation:bob .8s steps(2) infinite}@keyframes bob{50%{transform:translateY(-3px)}}
+.panel{margin-top:8px;padding:8px 10px;background:#120b1c;border:3px solid #1b1226;font-size:13px;line-height:1.6}
+/* 店 */
+.shopbox{position:relative;height:190px;border:4px solid #1b1226;overflow:hidden;box-shadow:inset 0 0 0 2px #5a4a78}
+.shopbox .bg{position:absolute;inset:0}
+.shopbox .toma{position:absolute;left:50%;bottom:6px;transform:translateX(-50%)}
+.bubble{position:absolute;left:8px;right:8px;top:8px;background:#f6f1e6;color:#1b1226;border:3px solid #1b1226;padding:4px 10px;font-size:13px;line-height:1.5}
+.bubble.err{background:#ffd6d0}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.cell{display:flex;gap:8px;align-items:center;background:#120b1c;border:3px solid #1b1226;padding:6px;min-width:0}
+.cell .tx{flex:1;min-width:0;font-size:12px;line-height:1.4}.cell .tx b{font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell button{padding:4px 8px;font-size:12px}
+.price{color:#f4c534}
+.inv{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.inv .slot{width:100%;height:auto;aspect-ratio:1}
+.inv .slot.pick{box-shadow:inset 0 0 0 3px #6fe0e8}
+.herolook{display:flex;gap:14px;align-items:center;justify-content:center;padding:8px;background:#120b1c;border:3px solid #1b1226}
+.loot{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;justify-content:center;margin:10px 0}
+.chestbox{text-align:center;font-size:12px;width:76px}
+.chestbox .pop{animation:pop .5s steps(4) both}@keyframes pop{0%{transform:translateY(8px) scale(.6);opacity:0}100%{transform:none;opacity:1}}
+.shine{animation:sh .6s steps(2) infinite}@keyframes sh{50%{opacity:.3}}
 </style>
 </head>
 <body>
@@ -271,15 +325,21 @@ const TABS = [["town", "作戦"], ["report", "日報"], ["shop", "道具屋"], [
 const guardianOf = (f) => (S.guardians || []).find((g) => g.floor === f);
 const lockedFloor = () => { const g = (S.guardians || []).find((g) => !g.defeated); return g ? g.floor : null; };
 
+const wAtk = (b) => (b ? defOf(b.def_id).atk + (b.plus || 0) : 0);
+const sDef = (b) => (b ? defOf(b.def_id).def + (b.plus || 0) : 0);
+const slotHtml = (b, k) => `<div class="slot ${b ? "on" : ""}" title="${b ? esc(nameOf(b)) : ""}">${b ? PX.item(b.def_id, 30) + `<small>${k === "W" ? wAtk(b) : sDef(b)}</small>` : ""}</div>`;
 function render() {
   const p = S.p, lv = lvOf(p.exp);
   const w = S.bag.find((x) => x.id === p.weapon_id), s = S.bag.find((x) => x.id === p.shield_id);
   const pct = Math.round(((p.exp - 6 * (lv - 1) * (lv - 1)) / (nextExp(lv) - 6 * (lv - 1) * (lv - 1))) * 100);
-  $("head").innerHTML = `<div class="card"><div class="row"><b>${esc(p.name)}</b><span class="lv">Lv${lv}</span><span class="tag">HP ${maxHp(lv)}</span><span class="grow"></span><b>${p.gold} G</b></div>
-    <div class="bar" style="margin:6px 0"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>
-    <div class="sub">次のレベルまで あと ${nextExp(lv) - p.exp} / 薬草 ${p.herbs}個 / ${w ? esc(nameOf(w)) : "素手"} ・ ${s ? esc(nameOf(s)) : "盾なし"}</div></div>`;
-  $("tabs").innerHTML = TABS.map(([k, n]) => `<button data-k="${k}" class="${S.view === k ? "on" : ""}">${n}</button>`).join("");
-  $("tabs").querySelectorAll("button").forEach((b) => b.onclick = () => { S.view = b.dataset.k; S.msg = ""; S.result = null; render(); });
+  const segs = Array.from({ length: 10 }, (_, i) => `<i style="${i < Math.round(Math.max(0, Math.min(100, pct)) / 10) ? "" : "background:#3a2f4d"}"></i>`).join("");
+  $("head").innerHTML = `<div class="card"><div class="hud">${PX.icon("hero", 56)}
+    <div class="who"><div class="row" style="gap:6px"><b>${esc(p.name)}</b><span class="lv">Lv${lv}</span><span class="grow"></span><span class="stat">${PX.icon("coin", 18)}<b>${p.gold}</b>G</span></div>
+    <div class="hpb">${segs}</div><div class="sub">あと ${nextExp(lv) - p.exp} でレベルアップ ・ HP ${maxHp(lv)}</div></div></div>
+    <div class="slots">${slotHtml(w, "W")}${slotHtml(s, "S")}<span class="stat" style="margin-left:6px">${PX.icon("herb", 26)}×${p.herbs}</span><span class="grow"></span><span>攻${wAtk(w)} 防${sDef(s)}</span></div></div>`;
+  const ICON = { town: ["door", "出撃"], report: ["flag", "日報"], shop: ["coin", "道具屋"], bag: ["chest_closed", "持ち物"] };
+  $("tabs").innerHTML = TABS.map(([k]) => `<button data-k="${k}" class="${S.view === k ? "on" : ""}">${PX.icon(ICON[k][0], 24)}${ICON[k][1]}</button>`).join("");
+  $("tabs").querySelectorAll("button").forEach((b) => b.onclick = () => { S.view = b.dataset.k; S.msg = ""; S.result = null; S.sel = null; render(); });
   ({ town: viewTown, report: viewReport, shop: viewShop, bag: viewBag })[S.view]();
 }
 function say(m, err) {
@@ -306,20 +366,40 @@ function farmHtml(p, pl) {
     ${chips ? `<div class="floors" style="margin-top:4px">${chips}</div>` : '<div class="sub" style="margin-top:4px">まだ突破した階がありません。</div>'}
     ${rows ? `<div class="sub" style="margin-top:8px">◎ は、強い装備が出る稼ぎ場です。</div>${rows}` : ""}`;
 }
+function towerHtml(p, pl) {
+  const fm = (S.season && S.season.farm) || null, hot = fm ? fm.floors : {};
+  const cur = pl.go === "stay" && pl.farm_floor ? pl.farm_floor : p.frontier;
+  let rows = "";
+  for (let f = p.frontier + 1; f >= 1; f--) {
+    const fog = f > p.frontier, front = f === p.frontier, g = !fog ? guardianOf(f) : null, h = !fog ? hot[f] : null;
+    const sel = !fog && f === cur;
+    let mid = "";
+    if (fog) mid = "？？？";
+    else if (front && g && !g.defeated) mid = `${PX.icon("dragon", 34)}<span>守護者 ${esc(g.name)}<div class="hp"><i style="width:${Math.round((g.hp / g.mhp) * 100)}%"></i></div></span>`;
+    else if (front) mid = `${PX.icon("flag", 28)}<span>最前線 ― 未踏の${f}階</span>`;
+    else if (h) {
+      const it = h.items[0], miss = ((p.pity || {})[f + ":" + it.id]) || 0, rate = Math.min(fm.cap, it.base + fm.step * miss);
+      mid = `${PX.icon("chest_closed", 30, "shine")}<span>${esc(h.name)}<div class="rt">${PX.item(it.id, 16)}${esc(itemName(it.id))} ${(rate * 100).toFixed(1)}%${miss ? ` ▲${miss}連続` : ""}</div></span>`;
+    } else if (g) mid = `${PX.icon("skull", 24)}<span>${esc(g.name)} 討伐済み</span>`;
+    else mid = `<span class="dim">通常の階</span>`;
+    rows += `<button class="fl ${sel ? "sel" : ""} ${fog ? "fog" : ""} ${h ? "hot" : ""}" data-fl="${f}" ${fog ? "disabled" : ""}><span class="no">${fog ? "?" : f}F</span><span class="mid">${mid}</span>${sel ? `<span class="hero-bob">${PX.icon("hero", 36)}</span>` : ""}</button>`;
+  }
+  return `<div class="roof"></div><div class="tower" id="tw">${rows}</div>`;
+}
 function viewTown() {
-  const p = S.p, pl = S.plan, se = S.season, L = lockedFloor();
+  const p = S.p, pl = S.plan, se = S.season;
   if (S.result) return viewResult();
-  const g = L !== null && p.frontier >= L ? guardianOf(L) : null;
-  const stayF = Math.max(1, p.frontier - 1);
-  const goBtn = (k, title, sub) => `<button data-go="${k}" class="${pl.go === k ? "on" : ""}" style="display:block;width:100%;text-align:left;margin-top:6px;padding:10px"><b>${title}</b><div class="sub">${sub}</div></button>`;
+  const f = pl.go === "stay" && pl.farm_floor ? pl.farm_floor : p.frontier;
+  const g = f === p.frontier ? guardianOf(f) : null, h = ((se && se.farm && se.farm.floors) || {})[f];
+  const info = f === p.frontier
+    ? (g && !g.defeated ? `守護者「${esc(g.name)}」に挑む。残りHP ${g.hp}/${g.mhp}。全員のダメージが合算される。` : `最前線の${f}階に挑む。うまくいけば到達階が上がる。危険も大きい。`)
+    : (h ? `${esc(h.name)}で稼ぐ。強い装備が出る稼ぎ場。外すほど確率が上がる。` : `${f}階で稼ぐ。突破した階を、くり返し周回する。`);
   $("view").innerHTML = `
-    <div class="card"><h2>作戦 ― 次のターン${se && se.next_at ? "は " + new Date(se.next_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "の日時は未定"}</h2>
-      <div style="font-size:18px;margin-top:4px">あなたの到達階 <b>${p.frontier}階</b></div>
-      <div class="sub">${p.first_done ? "締切までは何度でも変えられます。決めなかった日は、前回と同じ作戦で動きます。" : "最初の1回だけは、今すぐ出発して結果を見られます。"}</div>
-      ${goBtn("up", g ? `最前線に挑む ― 守護者「${esc(g.name)}」` : `最前線に挑む ― ${p.frontier}階`, g ? `残りHP ${g.hp}/${g.mhp}。全員のダメージが合算されます。` : `うまくいけば、到達階が上がります。危険も大きい。`)}
-      ${farmHtml(p, pl)}
-      <div class="sub" style="margin-top:8px">今の作戦: <b>${pl.go === "stay" && pl.farm_floor ? pl.farm_floor + "階で稼ぐ" : "最前線に挑む"}</b></div>
-      <div style="margin-top:12px"><button class="primary" id="go">${p.first_done ? "この作戦で決定" : "最初の冒険に出発"}</button></div>${msgHtml()}</div>
+    <div class="card"><h2>出撃 ― 次のターン${se && se.next_at ? "は " + new Date(se.next_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "の日時は未定"}</h2>
+      <div class="sub">行きたい階をえらぶ。◎光る宝箱は稼ぎ場。${p.first_done ? "決めなかった日は前回と同じ。" : "最初の1回だけは、今すぐ出発できる。"}</div>
+      ${towerHtml(p, pl)}
+      <div class="panel"><b>${f}階</b> ― ${info}</div>
+      <div style="margin-top:10px"><button class="primary" id="go" style="width:100%;padding:12px;font-size:16px">${p.first_done ? "この階で決定" : "最初の冒険に出発"}</button></div>${msgHtml()}</div>
     ${S.log ? `<div class="card"><h2>前回の結果</h2>${logSummary(S.log)}${(S.log.recap || []).length ? `<div class="log">${S.log.recap.map((l) => `<div>${esc(l)}</div>`).join("")}</div>` : ""}</div>` : ""}
     <div class="card"><h2>アカウント</h2>
       ${S.user.is_anonymous ? `<div class="dim">ゲスト中です。ブラウザやスマホを変えても続けるには、IDを登録してください。</div>
@@ -328,8 +408,12 @@ function viewTown() {
       <div style="margin-top:10px" class="row"><button id="btnOut">ログアウト</button><button id="btnReset">最初からやり直す</button></div>
       <div class="sub">「最初からやり直す」を押すと、このキャラクターのデータが消えて、オープニングからになります。</div></div>`;
   const v = $("view");
-  v.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => { pl.go = b.dataset.go; render(); });
-  v.querySelectorAll("[data-ff]").forEach((b) => b.onclick = () => { pl.go = "stay"; pl.farm_floor = +b.dataset.ff; render(); });
+  const tw = $("tw"); if (tw) { const sel = tw.querySelector(".sel"); if (sel) tw.scrollTop = Math.max(0, sel.offsetTop - 120); }
+  v.querySelectorAll("[data-fl]").forEach((b) => b.onclick = () => {
+    const n = +b.dataset.fl; const top = tw ? tw.scrollTop : 0;
+    if (n === p.frontier) { pl.go = "up"; pl.farm_floor = null; } else { pl.go = "stay"; pl.farm_floor = n; }
+    render(); const t2 = $("tw"); if (t2) t2.scrollTop = top;
+  });
   $("go").onclick = async () => {
     $("go").disabled = true;
     const { data, error } = await sb.rpc("t_plan_go", { p_go: pl.go, p_farm: pl.go === "stay" ? pl.farm_floor : null });
@@ -379,10 +463,13 @@ function logSummary2(b) {
     ${b.turn ? `<b>ターン</b><span>第${b.turn}ターン</span>` : ""}</div>`;
 }
 function viewResult() {
-  const b = S.result;
+  const b = S.result, jp = (b.jackpot || []);
+  const chests = jp.map((j) => `<div class="chestbox"><div class="pop" style="display:inline-block">${PX.icon("chest_open", 64, "shine")}</div><div class="price">${esc(j.item)}</div></div>`).join("")
+    + (b.items || []).map((n, i) => `<div class="chestbox"><div class="pop" style="display:inline-block;animation-delay:${i * .15}s">${PX.icon("chest_closed", 48)}</div><div>${esc(n)}</div></div>`).join("");
   $("view").innerHTML = `<div class="card"><h2>${b.floor}階の冒険</h2>${logSummary(b)}
+    ${chests ? `<div class="loot">${chests}</div>` : ""}
     <div class="log">${(b.recap || []).map((l) => `<div>${esc(l)}</div>`).join("")}</div>
-    <div class="sub" style="margin-top:8px">ここまでが、最初の冒険です。これからは、作戦を決めておくと、平日の昼に自動で冒険に出ます。</div>
+    <div class="sub" style="margin-top:8px">ここまでが、最初の冒険です。これからは、階を決めておくと、平日の昼に自動で冒険に出ます。</div>
     <div style="margin-top:12px"><button class="primary" id="back">町へ戻る</button></div></div>`;
   $("back").onclick = () => { S.result = null; render(); };
 }
@@ -445,12 +532,17 @@ function viewShop() {
   const p = S.p, d = S.defs;
   const buyable = [...Object.entries(d.weapons).map(([id, x]) => ({ id, x, k: "W" })), ...Object.entries(d.shields).map(([id, x]) => ({ id, x, k: "S" }))].filter((o) => o.x.price > 0);
   const eq = new Set([p.weapon_id, p.shield_id]);
-  $("view").innerHTML = `<div class="card"><h2>道具屋トマの店 ― 買う</h2>${msgHtml()}
-      <div class="item"><div class="nm">薬草<div class="sub">HPを回復する。最大${d.herb.max}個まで。</div></div><b>${d.herb.price}G</b><button data-buy="herb" ${p.gold < d.herb.price || p.herbs >= d.herb.max ? "disabled" : ""}>買う</button></div>
-      ${buyable.map((o) => `<div class="item"><div class="nm">${esc(o.x.name)} <span class="tag">${o.k === "W" ? "攻撃力" + o.x.atk : "防御力" + o.x.def}</span><div class="sub">${esc(o.x.note)}</div></div><b>${o.x.price}G</b><button data-buy="${o.id}" ${p.gold < o.x.price ? "disabled" : ""}>買う</button></div>`).join("")}</div>
-    <div class="card"><h2>売る</h2>
-      ${p.herbs > 0 ? `<div class="item"><div class="nm">薬草 ×${p.herbs}</div><b>${d.herb.sell}G</b><button data-herb="1">売る</button></div>` : ""}
-      ${S.bag.map((b) => `<div class="item"><div class="nm">${esc(nameOf(b))} <span class="tag">${itemInfo(b)}</span>${eq.has(b.id) ? ' <span class="tag">装備中</span>' : ""}</div><b>${Math.round(defOf(b.def_id).sell * (1 + 0.35 * (b.plus || 0)))}G</b><button data-sell="${b.id}" ${eq.has(b.id) ? "disabled" : ""}>売る</button></div>`).join("") || '<div class="dim">売れる物がありません。</div>'}</div>`;
+  const say0 = S.msg ? esc(S.msg) : "いらっしゃい! 木の棒から盾まで、まっとうな品しか置いてないぜ。";
+  $("view").innerHTML = `<div class="card"><h2>道具屋トマ</h2>
+      <div class="shopbox"><div class="bg">${PX.shopScene()}</div><div class="bubble ${S.err ? "err" : ""}">${say0}</div><div class="toma">${PX.icon("toma", 96)}</div></div>
+      <div class="sub" style="margin-top:8px">所持金 <span class="price">${p.gold}G</span></div></div>
+    <div class="card"><h2>買う</h2><div class="grid">
+      <div class="cell">${PX.icon("herb", 40)}<div class="tx"><b>薬草</b>HP回復 最大${d.herb.max}個<div class="price">${d.herb.price}G</div></div><button data-buy="herb" ${p.gold < d.herb.price || p.herbs >= d.herb.max ? "disabled" : ""}>買う</button></div>
+      ${buyable.map((o) => `<div class="cell">${PX.item(o.id, 40)}<div class="tx"><b>${esc(o.x.name)}</b>${o.k === "W" ? "攻撃" + o.x.atk : "防御" + o.x.def}<div class="price">${o.x.price}G</div></div><button data-buy="${o.id}" ${p.gold < o.x.price ? "disabled" : ""}>買う</button></div>`).join("")}</div></div>
+    <div class="card"><h2>売る</h2><div class="grid">
+      ${p.herbs > 0 ? `<div class="cell">${PX.icon("herb", 40)}<div class="tx"><b>薬草 ×${p.herbs}</b><div class="price">${d.herb.sell}G</div></div><button data-herb="1">売る</button></div>` : ""}
+      ${S.bag.map((b) => `<div class="cell">${PX.item(b.def_id, 40)}<div class="tx"><b>${esc(nameOf(b))}</b>${itemInfo(b)}${eq.has(b.id) ? " 装備中" : ""}<div class="price">${Math.round(defOf(b.def_id).sell * (1 + 0.35 * (b.plus || 0)))}G</div></div><button data-sell="${b.id}" ${eq.has(b.id) ? "disabled" : ""}>売る</button></div>`).join("")}</div>
+      ${!p.herbs && !S.bag.length ? '<div class="dim">売れる物がありません。</div>' : ""}</div>`;
   const run = async (fn, args) => { const { data, error } = await sb.rpc(fn, args); if (error) return say(error.message, true); await loadAll(); say(data.msg, !data.ok); };
   $("view").querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => run("t_buy", { p_def: b.dataset.buy }));
   $("view").querySelectorAll("[data-sell]").forEach((b) => b.onclick = () => run("t_sell", { p_item: b.dataset.sell }));
@@ -458,19 +550,26 @@ function viewShop() {
 }
 
 function viewBag() {
-  const p = S.p;
-  const line = (b) => { const on = b.id === p.weapon_id || b.id === p.shield_id;
-    return `<div class="item"><div class="nm">${esc(nameOf(b))} <span class="tag">${itemInfo(b)}</span>${on ? ' <span class="tag">装備中</span>' : ""}<div class="sub">${esc(defOf(b.def_id).note)}</div></div>
-      <button data-eq="${b.id}" ${on ? "disabled" : ""}>装備</button></div>`; };
-  $("view").innerHTML = `<div class="card"><h2>持ち物 (${S.bag.length}/${S.defs.bag_max}) ・ 薬草 ${p.herbs}個</h2>${msgHtml()}
-      <div class="sub">冒険から戻ると、いちばん強い武器と盾が自動で装備されます。</div></div>
-    <div class="card"><h2>武器</h2>${S.bag.filter((b) => b.kind === "W").map(line).join("") || '<div class="dim">なし</div>'}</div>
-    <div class="card"><h2>盾</h2>${S.bag.filter((b) => b.kind === "S").map(line).join("") || '<div class="dim">なし</div>'}</div>`;
-  $("view").querySelectorAll("[data-eq]").forEach((b) => b.onclick = async () => {
-    const { data, error } = await sb.rpc("t_equip", { p_item: b.dataset.eq });
+  const p = S.p, max = S.defs.bag_max;
+  const w = S.bag.find((x) => x.id === p.weapon_id), s = S.bag.find((x) => x.id === p.shield_id);
+  const sel = S.bag.find((b) => b.id === S.sel) || null;
+  const order = [...S.bag.filter((b) => b.kind === "W"), ...S.bag.filter((b) => b.kind === "S")];
+  const cells = Array.from({ length: Math.max(max, order.length) }, (_, i) => { const b = order[i];
+    if (!b) return `<div class="slot"></div>`;
+    const on = b.id === p.weapon_id || b.id === p.shield_id;
+    return `<button class="slot ${on ? "eqd" : ""} ${sel && sel.id === b.id ? "pick" : ""}" data-pick="${b.id}" style="padding:0">${PX.item(b.def_id, 40)}<small>${b.kind === "W" ? wAtk(b) : sDef(b)}</small></button>`; }).join("");
+  const on = sel && (sel.id === p.weapon_id || sel.id === p.shield_id);
+  $("view").innerHTML = `<div class="card"><h2>装備</h2>${msgHtml()}
+      <div class="herolook">${slotHtml(w, "W")}${PX.icon("hero", 96)}${slotHtml(s, "S")}</div>
+      <div class="sub" style="text-align:center;margin-top:4px">攻撃力 ${wAtk(w)} ／ 防御力 ${sDef(s)}　※戻ると、いちばん強い物が自動で装備されます</div></div>
+    <div class="card"><h2>持ち物 (${S.bag.length}/${max}) ・ 薬草 ${p.herbs}個</h2><div class="inv">${cells}</div>
+      <div class="panel">${sel ? `<div class="row">${PX.item(sel.def_id, 40)}<div class="grow"><b>${esc(nameOf(sel))}</b> ${itemInfo(sel)}<div class="sub">${esc(defOf(sel.def_id).note || "")}</div></div><button class="primary" id="eqb" ${on ? "disabled" : ""}>${on ? "装備中" : "装備"}</button></div>` : '<span class="dim">道具をタップすると、くわしく見られます。</span>'}</div></div>`;
+  $("view").querySelectorAll("[data-pick]").forEach((b) => b.onclick = () => { S.sel = b.dataset.pick; S.msg = ""; render(); });
+  if ($("eqb")) $("eqb").onclick = async () => {
+    const { data, error } = await sb.rpc("t_equip", { p_item: sel.id });
     if (error) return say(error.message, true);
     await loadAll(); say(data.msg, !data.ok);
-  });
+  };
 }
 
 /* ================= ログイン ================= */
