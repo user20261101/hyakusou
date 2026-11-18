@@ -164,6 +164,10 @@ svg.px.inl{display:inline-block;vertical-align:middle}
 .np .ad{border:4px double var(--rule)}
 .np .bar{border-radius:0;height:10px}
 .np td:first-child,.np th:first-child{white-space:nowrap}
+/* タブは最下段に固定 */
+.wrap{padding-bottom:110px}
+#tabs.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:#161022;border-top:4px solid #1b1226;box-shadow:0 -2px 0 #5a4a78;justify-content:center}
+#tabs.tabs button{max-width:110px}
 </style>
 </head>
 <body>
