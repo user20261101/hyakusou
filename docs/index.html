@@ -67,6 +67,31 @@ button:disabled{opacity:.45;cursor:default}
 #story .ask{margin-top:8px}
 #story .skip{position:fixed;top:10px;right:12px;font-size:12px;background:transparent;border:1px solid #444;color:#999}
 .portrait{position:absolute;right:12px;top:-62px;width:64px;height:64px}
+
+.np{--paper:#f3ead6;--ink:#1d1a14;--rule:#3a3224;--accent:#8a1c1c;--dim:#6b604a;color:var(--ink);background:var(--paper);background-image:radial-gradient(rgba(120,90,40,.10) 1px,transparent 1px);background-size:5px 5px;
+  font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP","MS PMincho",serif;line-height:1.8;padding:14px 16px 18px;border:1px solid #b9ab88;border-radius:4px;box-shadow:0 4px 20px rgba(0,0,0,.4);margin-bottom:12px}
+.np *{box-sizing:border-box}
+.np .topline{display:flex;justify-content:space-between;gap:6px;font-size:11px;color:var(--dim);border-bottom:1px solid var(--rule);padding-bottom:3px;letter-spacing:.06em}
+.np .mast{text-align:center;margin:8px 0 2px}.np .mast h1{margin:0;font-size:clamp(38px,11vw,72px);letter-spacing:.16em;font-weight:900;line-height:1.1;text-indent:.16em;color:var(--ink)}
+.np .mast .en{font-size:10px;letter-spacing:.4em;color:var(--dim)}
+.np .rule2{border-top:3px solid var(--rule);border-bottom:1px solid var(--rule);height:6px;margin:6px 0 10px}
+.np .headline{text-align:center}.np .kicker{display:inline-block;background:var(--accent);color:#fff;font-size:12px;letter-spacing:.2em;padding:1px 10px}
+.np .headline h2{margin:6px 0 2px;font-size:clamp(24px,6.4vw,44px);line-height:1.3;font-weight:900;color:var(--ink)}
+.np .headline .sub{font-size:clamp(13px,2.6vw,16px);color:#3a3224}
+.np .cols{display:grid;grid-template-columns:2fr 1fr;margin-top:10px;border-top:1px solid var(--rule)}
+.np .main{padding:10px 14px 4px 0;border-right:1px solid var(--rule)}.np .side{padding:10px 0 4px 14px}
+.np .main p{margin:0 0 .75em;text-align:justify;font-size:15.5px}.np .main p.lead::first-letter{float:left;font-size:3.2em;line-height:.85;padding:5px 7px 0 0;font-weight:900;color:var(--accent)}
+.np h3{margin:12px 0 5px;font-size:16.5px;border-bottom:2px solid var(--rule);padding-bottom:2px;color:var(--ink)}
+.np .quote{margin:12px 0;padding:6px 12px;border-left:5px solid var(--accent);font-size:17.5px;font-weight:700;line-height:1.6;background:rgba(138,28,28,.06)}.np .quote small{display:block;font-weight:400;font-size:11.5px;color:var(--dim)}
+.np .box{border:1px solid var(--rule);padding:6px 10px;margin:0 0 12px;background:rgba(255,255,255,.28)}.np .box h3{margin-top:0}
+.np table{width:100%;border-collapse:collapse;font-size:14px}.np td,.np th{padding:2px 3px;border-bottom:1px dotted #8a7d5e;text-align:left}.np th{font-size:11px;color:var(--dim);font-weight:400}
+.np .bar{height:8px;background:#d9cca9;border:1px solid var(--rule);margin:2px 0 5px}.np .bar i{display:block;height:100%;background:var(--accent)}
+.np .small{font-size:12.5px;color:var(--dim);line-height:1.6}
+.np .ad{border:3px double var(--rule);text-align:center;padding:8px 6px;margin-bottom:12px;font-size:14px}.np .ad b{font-size:18px;display:block}
+.np .strip{display:grid;grid-template-columns:1fr 1fr;gap:14px;border-top:1px solid var(--rule);margin-top:4px;padding-top:10px}.np .strip h3{margin:0 0 3px}.np .strip p{margin:0 0 .5em;font-size:14.5px}
+.np .foot{text-align:center;margin-top:12px;padding-top:8px;border-top:3px double var(--rule);font-size:14px}
+.np ol.rk{margin:0;padding-left:1.4em;font-size:14px}
+@media (max-width:640px){.np .cols,.np .strip{grid-template-columns:1fr}.np .main{border-right:none;padding-right:0}.np .side{padding-left:0;border-top:1px solid var(--rule)}}
 .jackpot{margin:8px 0;padding:10px;border-radius:8px;text-align:center;font-weight:bold;color:#2b1d00;background:linear-gradient(90deg,#ffd45a,#fff1a8,#ffd45a);box-shadow:0 0 14px #ffd45a99}
 .jackpot .jp-sub{font-weight:normal;font-size:13px;margin-top:2px}
 </style>
@@ -376,23 +401,44 @@ const pickLine = (x) => {
   })[x.kind] || `${n}の活躍。`;
 };
 function viewReport() {
-  const t = S.turn, gs = S.guardians || [];
-  const gHtml = gs.map((g) => { const pct = Math.round((g.hp / g.mhp) * 100);
-    return `<div class="item"><div class="nm">${g.floor}F ${esc(g.name)}<div class="hpbar en" style="margin-top:4px"><i style="width:${g.defeated ? 0 : pct}%"></i></div>
-      <div class="sub">${g.defeated ? `討伐済み(${esc(g.first_by || "")}が最後の一撃)` : `残りHP ${g.hp}/${g.mhp}`}</div></div></div>`; }).join("");
-  if (!t) { $("view").innerHTML = `<div class="card"><h2>日報</h2><div class="dim">最初のターンが処理されると、ここに日報が届きます。</div></div><div class="card"><h2>守護者</h2>${gHtml}</div>`; return; }
-  const b = t.body || {};
-  const f = b.front || {};
-  const frontLine = f.top_floor ? `最前線は第${f.top_floor}層。` + (f.dist && f.dist.length ? " " + f.dist.map((d) => `${d.floor}階に${d.n}人`).join("、") + "。" : "") : "";
-  const cont = Object.entries(b.contrib || {}).map(([fl, arr]) => `<div class="sub" style="margin-top:6px">${fl}階の守護者への貢献</div>` + arr.slice(0, 5).map((c, i) => `<div>${i + 1}. ${esc(c.name)} <span class="dim">${c.dmg}ダメージ${c.dead ? "(力尽きた)" : ""}</span></div>`).join("")).join("");
-  $("view").innerHTML = `
-    <div class="card"><h2>第${t.n}ターンの日報</h2><div style="font-size:17px;line-height:1.6">${esc(t.headline || "")}</div>
-      <div class="sub" style="margin-top:6px">冒険者 ${b.players + b.bots}人 ・ 探索 ${b.dives}回 ・ 守護者戦 ${b.guardian_fights}回 ・ 倒れた人 ${(b.deaths || []).length}人</div></div>
-    <div class="card"><h2>最前線ニュース</h2><div style="line-height:1.7;white-space:pre-wrap">${esc(b.news || frontLine || "動きはありませんでした。")}</div></div>
-    ${(b.pickups || []).length ? `<div class="card"><h2>ピックアップ</h2>${b.pickups.map((x) => `<div style="margin:6px 0">${pickLine(x)}</div>`).join("")}</div>` : ""}
-    <div class="card"><h2>守護者</h2>${gHtml}${cont}</div>
-    <div class="card"><h2>到達階ランキング</h2>${(b.top || []).map((x, i, a) => `<div>${i > 0 && a[i - 1].frontier === x.frontier ? "&nbsp;&nbsp;&nbsp;" : i + 1 + "."} ${esc(x.name)} <span class="dim">${x.frontier}階${x.bot ? " ・ ボット" : ""}</span></div>`).join("")}</div>
-    ${(b.deaths || []).length ? `<div class="card"><h2>倒れた冒険者</h2>${b.deaths.slice(0, 8).map((d) => `<div>${esc(d.name)} ― ${d.floor}階${d.cause ? "で" + esc(d.cause) + "に" : "で"}倒れた</div>`).join("")}</div>` : ""}`;
+  const t = S.turn;
+  if (!t) { $("view").innerHTML = `<div class="card"><h2>日報</h2><div class="dim">最初のターンが処理されると、ここに日報が届きます。</div></div>`; return; }
+  const b = t.body || {}, pp = b.paper || {}, f = b.front || {};
+  const gs = b.guardians || S.guardians || [];
+  const when = new Date(t.at || Date.now());
+  const wd = "日月火水木金土"[when.getDay()];
+  const dateStr = `${when.getFullYear()}年${when.getMonth() + 1}月${when.getDate()}日(${wd})`;
+  const paras = String(b.news || "").split(/\n+/).filter(Boolean);
+  const mainHtml = (paras.length ? paras : ["動きの少ない一日だった。" + (f.top_floor ? `最前線は第${f.top_floor}層。` : "")]).map((x, i) => `<p class="${i === 0 ? "lead" : ""}">${esc(x)}</p>`).join("");
+  const top = b.top || [];
+  const dist = (f.dist || []).map((d) => {
+    const names = top.filter((x) => x.frontier === d.floor).map((x) => x.name);
+    return `<tr><td><b>第${d.floor}層</b></td><td>${d.n <= 3 && names.length === d.n ? names.map(esc).join("、") : d.n + "人"}</td></tr>`;
+  }).join("");
+  const gHtml = gs.map((g) => { const pct = g.defeated ? 0 : Math.round((g.hp / g.mhp) * 100);
+    return `<div><b>${g.floor}F</b> ${esc(g.name)}</div><div class="bar"><i style="width:${pct}%"></i></div><div class="small" style="margin-top:-3px">${g.defeated ? `討伐済み(${esc(g.first_by || "")})` : `HP ${g.hp} / ${g.mhp}`}</div>`; }).join("");
+  const cont = Object.entries(b.contrib || {}).map(([fl, arr]) => `<h3>${fl}階の守護者への貢献</h3><ol class="rk">${arr.slice(0, 5).map((c) => `<li>${esc(c.name)} <span class="small">${c.dmg}ダメージ${c.dead ? "(力尽きた)" : ""}</span></li>`).join("")}</ol>`).join("");
+  const picks = (b.pickups || []).length ? `<h3>ピックアップ</h3>${b.pickups.map((x) => `<p style="font-size:15px">${pickLine(x)}</p>`).join("")}` : "";
+  const quote = pp.quote && pp.quote.t ? `<div class="quote">${esc(pp.quote.t)}${pp.quote.by ? `<small>― ${esc(pp.quote.by)}</small>` : ""}</div>` : "";
+  const feature = pp.feature && pp.feature.text ? `<h3>${esc(pp.feature.title || "")}</h3>${String(pp.feature.text).split(/\n+/).map((x) => `<p style="font-size:15px">${esc(x)}</p>`).join("")}` : "";
+  const ad = pp.ad || { name: "道具屋トマ", text: "木の棒、あります。\n薬草は命綱。ケチるなよ。" };
+  const deaths = (b.deaths || []).length ? `<div class="small" style="margin-top:4px">倒れた冒険者: ${b.deaths.slice(0, 6).map((d) => `${esc(d.name)}(${d.floor}階)`).join("、")}</div>` : "";
+  $("view").innerHTML = `<div class="np">
+    <div class="topline"><span>第${t.n}号</span><span>${dateStr}</span><span>発行部数:塔にいる全員</span></div>
+    <div class="mast"><h1>百層日報</h1><div class="en">T H E &nbsp; H Y A K U S O U &nbsp; D A I L Y</div></div><div class="rule2"></div>
+    <div class="headline"><span class="kicker">${esc(pp.kicker || (t.n === 1 ? "創刊号 ・ 一面" : "一面"))}</span><h2>${esc(t.headline || "")}</h2>${pp.sub ? `<div class="sub">${esc(pp.sub)}</div>` : ""}</div>
+    <div class="cols"><div class="main">${mainHtml}${quote}${picks}${feature}${cont}</div>
+      <div class="side">
+        <div class="box"><h3>本日の最前線</h3><table><tr><th>到達階</th><th>冒険者</th></tr>${dist || '<tr><td colspan="2">動きなし</td></tr>'}</table></div>
+        <div class="box"><h3>守護者情報</h3>${gHtml}</div>
+        <div class="ad"><b>${esc(ad.name)}</b>${String(ad.text || "").split(/\n/).map(esc).join("<br>")}</div>
+        <div class="box"><h3>到達階ランキング</h3><ol class="rk">${top.slice(0, 10).map((x) => `<li>${esc(x.name)} <span class="small">${x.frontier}階${x.bot ? "" : ""}</span></li>`).join("")}</ol></div>
+        <div class="box"><h3>けさの塔</h3><div class="small">冒険者:${(b.players || 0) + (b.bots || 0)}人<br>探索:${b.dives || 0}回 ・ 守護者戦:${b.guardian_fights || 0}回<br>倒れた人:${(b.deaths || []).length}人</div>${deaths}</div>
+      </div></div>
+    <div class="strip"><div>${pp.corner && pp.corner.text ? `<h3>${esc(pp.corner.title || "")}</h3><p>${esc(pp.corner.text)}</p>` : ""}</div>
+      <div><h3>編集後記</h3><p>${esc(pp.afterword || "塔はまだ、始まったばかり。明日の見出しになる名前を、私たちはまだ知らない。")}</p></div></div>
+    <div class="foot"><b>次の号は、${S.season && S.season.next_at ? new Date(S.season.next_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "未定"}。</b> あなたの作戦が、明日の見出しを決める。</div>
+  </div>`;
 }
 
 function viewShop() {
