@@ -149,6 +149,8 @@
     s8: W("kite", "#f6f9ff", "#aab4d0", { a: "#6aa6d9" }), s9: W("kite", "#ff8a58", "#c4301f", { a: "#ffe27a" }), s10: W("kite", "#fff3b0", "#e0b840", { a: "#6aa6d9" }),
     s11: W("kite", "#a97ae8", "#5a3a9a", { a: "#6fe0e8" }), s12: W("kite", "#c4fff2", "#4ad0c0", { a: "#f6f1e6" }),
   };
+  const GEN = [["#a9f0ff", "#3a8fd0", "#ffe27a"], ["#ffd0f0", "#c04aa0", "#6fe0e8"], ["#ffb070", "#c04020", "#fff3b0"], ["#e0c8ff", "#6a3aba", "#ffe27a"], ["#fff8c0", "#d0a020", "#ff6a58"], ["#c0ffd0", "#2a9a5a", "#f6f1e6"], ["#ffffff", "#9aa4c0", "#ffe27a"]];
+  GEN.forEach(([b, d, a], i) => { ITEMS["w" + (13 + i)] = W(i % 2 ? "spear" : i === 2 ? "axe" : "sword", b, d); ITEMS["s" + (13 + i)] = W("kite", b, d, { a }); });
   const SHAPES = { sword: () => sword(0), dagger: () => sword(4), axe, spear, stick, round: roundShield, kite: kiteShield };
 
   /* ===== 町 ===== */

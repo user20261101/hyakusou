@@ -327,7 +327,7 @@ async function boot() {
 async function setStory(n) { await sb.from("players").update({ story: n }).eq("user_id", S.user.id); S.p.story = n; }
 async function loadAll() {
   const uid = S.user.id;
-  const [p, b, l, pl, se, gu, tu, tn] = await Promise.all([
+  const [p, b, l, pl, se, gu, tu, tn, df] = await Promise.all([
     sb.from("players").select("*").eq("user_id", uid).single(),
     sb.from("bag").select("*").eq("user_id", uid).order("created_at"),
     sb.from("logs").select("*").eq("user_id", uid).order("id", { ascending: false }).limit(1),
@@ -336,7 +336,9 @@ async function loadAll() {
     sb.from("guardians").select("*").order("floor"),
     sb.from("turns").select("*").order("n", { ascending: false }).limit(1),
     sb.rpc("t_town"),
+    sb.rpc("t_defs"),
   ]);
+  if (df && df.data) S.defs = df.data;
   S.town = tn && tn.data ? tn.data : S.town || null;
   S.p = p.data; S.bag = b.data || []; S.log = (l.data || [])[0] ? l.data[0].body : null;
   S.planSaved = pl.data ? { go: pl.data.go, farm_floor: pl.data.farm_floor } : null;
@@ -569,6 +571,7 @@ function viewReport() {
   const quote = pp.quote && pp.quote.t ? `<div class="quote">${esc(pp.quote.t)}${pp.quote.by ? `<small>― ${esc(pp.quote.by)}</small>` : ""}</div>` : "";
   const feature = pp.feature && pp.feature.text ? `<h3>${esc(pp.feature.title || "")}</h3>${String(pp.feature.text).split(/\n+/).map((x) => `<p style="font-size:15px">${esc(x)}</p>`).join("")}` : "";
   const ad = pp.ad || { name: "道具屋トマ", text: "木の棒、あります。\n薬草は命綱。ケチるなよ。" };
+  const ext = b.ext ? `<h3>塔が延びた</h3><p style="font-size:15px">第${b.ext.floor}層に、新たな守護者「${esc(b.ext.name)}」が現れた。${b.ext.by ? "塔主" + esc(b.ext.by) + "の名のもとに、" : ""}塔はさらに高く、冒険者を待っている。</p>` : "";
   const tw = b.town;
   const townNews = tw && (tw.built || []).length ? `<h3>町だより</h3>${tw.built.map((x) => `<p style="font-size:15px">町の「${esc(x.name)}」が、レベル${x.lv}になった。いちばん寄付したのは${esc(x.by || "")}。</p>`).join("")}` : "";
   const townBox = tw && (tw.facilities || []).length ? `<div class="box"><h3>町の普請</h3>${tw.facilities.map((f) => `<div>${esc(f.name)} Lv${f.lv}</div>${f.goal ? `<div class="bar"><i style="width:${Math.round((f.fund / f.goal) * 100)}%"></i></div><div class="small" style="margin-top:-3px">${f.fund} / ${f.goal}G</div>` : '<div class="small">完成</div>'}`).join("")}</div>${(tw.rank_week || []).length ? `<div class="box"><h3>寄付番付(今週)</h3><ol class="rk">${tw.rank_week.slice(0, 5).map((x) => `<li>${esc(x.name)} <span class="small">${x.amt}G</span></li>`).join("")}</ol></div>` : ""}` : "";
@@ -577,10 +580,10 @@ function viewReport() {
     <div class="topline"><span>第${t.n}号</span><span>${dateStr}</span><span>発行部数:塔にいる全員</span></div>
     <div class="mast"><h1>百層日報</h1><div class="en">T H E &nbsp; H Y A K U S O U &nbsp; D A I L Y</div></div><div class="rule2"></div>
     <div class="headline"><span class="kicker">${esc(pp.kicker || (t.n === 1 ? "創刊号 ・ 一面" : "一面"))}</span><h2>${esc(t.headline || "")}</h2>${pp.sub ? `<div class="sub">${esc(pp.sub)}</div>` : ""}</div>
-    <div class="cols"><div class="main">${mainHtml}${quote}${picks}${townNews}${feature}${cont}</div>
+    <div class="cols"><div class="main">${mainHtml}${quote}${picks}${ext}${townNews}${feature}${cont}</div>
       <div class="side">
         <div class="box"><h3>本日の最前線</h3><table><tr><th>到達階</th><th>冒険者</th></tr>${dist || '<tr><td colspan="2">動きなし</td></tr>'}</table></div>
-        <div class="box"><h3>守護者情報</h3>${gHtml}</div>
+        <div class="box"><h3>守護者情報</h3>${gHtml}${b.lord ? `<div class="small" style="margin-top:6px">現在の塔主: ${esc(b.lord)}</div>` : ""}</div>
         ${townBox}
         <div class="ad"><b>${esc(ad.name)}</b>${String(ad.text || "").split(/\n/).map(esc).join("<br>")}</div>
         <div class="box"><h3>到達階ランキング</h3><ol class="rk">${top.slice(0, 10).map((x) => `<li>${esc(x.name)} <span class="small">${x.frontier}階${x.bot ? "" : ""}</span></li>`).join("")}</ol></div>
@@ -597,6 +600,20 @@ const EFFECT = {
   watch: (f) => { const fl = ((S.season && S.season.farm && S.season.farm.floors) || {}); const lines = Object.entries(fl).filter(([, v]) => v.need && v.need.watch).sort((a, b) => a[1].need.watch - b[1].need.watch).map(([k, v]) => `Lv${v.need.watch}:${k}階「${esc(v.name)}」を解放`); return lines.join(" / "); },
   inn: () => "完成すると、毎ターン、薬草がLvの数だけ差し入れされる(上限まで)",
 };
+
+const KINDS = { brute: ["猛攻型", "攻撃が重い。短期決戦"], bulwark: ["堅守型", "守りが固く、HPが多い"], breath: ["息吹型", "ブレスを多用する。防ぐ工夫が要る"] };
+function lordHtml() {
+  const se = S.season, gs = S.guardians || [];
+  if (!se || !gs.length || gs.some((g) => !g.defeated) || se.top >= 100) return "";
+  const me = se.tower_lord && S.user && se.tower_lord === S.user.id;
+  if (!me) return `<div class="card"><h2>塔の頂</h2><div class="sub">塔は、第${se.top}層まで踏破された。塔主${se.lord_name ? "「" + esc(se.lord_name) + "」" : ""}が、塔を延ばす日を待っている。数ターン経つと、塔は自然に延びる。</div></div>`;
+  const k = S.exKind || "brute";
+  return `<div class="card"><h2>塔主の務め</h2><div class="sub">あなたは、塔を踏破した塔主。次の守護者の名前と性格を決めて、塔を第${se.top + 10}層まで延ばせる。</div>
+    <div class="row" style="margin-top:8px"><input id="exName" maxlength="12" placeholder="守護者の名前(12文字まで)" class="grow" value="${esc(S.exName || "")}"></div>
+    <div class="row" style="margin-top:8px">${Object.entries(KINDS).map(([id, [n]]) => `<button data-kind="${id}" class="${k === id ? "on" : ""}">${n}</button>`).join("")}</div>
+    <div class="sub" style="margin-top:4px">${esc(KINDS[k][1])}</div>
+    <div style="margin-top:10px"><button class="primary" id="exGo" style="width:100%;padding:10px">塔を延ばす</button></div></div>`;
+}
 function viewPlaza() {
   const t = S.town || { facilities: [], rank_total: [], rank_week: [], mine: {} }, p = S.p;
   const rk = S.rk || "week", list = (rk === "week" ? t.rank_week : t.rank_total) || [];
@@ -611,11 +628,18 @@ function viewPlaza() {
       <div class="row" style="margin-top:6px">${amts}${all}</div>`}
       ${(f.plaques || []).length ? `<div class="sub" style="margin-top:6px">${(f.plaques || []).map((q) => `銘板 Lv${q.lv}: ${esc(q.name)}`).join(" ／ ")}</div>` : ""}</div>`;
   }).join("");
-  $("view").innerHTML = `<div class="card"><h2>町の広場 ― みんなで育てる</h2>${msgHtml()}
+  $("view").innerHTML = `${lordHtml()}<div class="card"><h2>町の広場 ― みんなで育てる</h2>${msgHtml()}
       <div class="sub">寄付したお金は、町の建設に使われる。完成すると、全員が恩恵を受ける。いちばん寄付した人の名前は、銘板に残る。あなたの寄付: 累計 ${(t.mine || {}).total || 0}G / 今週 ${(t.mine || {}).week || 0}G</div></div>
     ${cards || '<div class="card dim">町の準備中です。</div>'}
     <div class="card"><h2>寄付番付</h2><div class="row"><button data-rk="week" class="${rk === "week" ? "on" : ""}">今週</button><button data-rk="total" class="${rk === "total" ? "on" : ""}">累計</button></div>
       <div style="margin-top:8px">${list.length ? list.map((x, i) => `<div class="item"><span class="lv" style="width:28px">${i + 1}</span><span class="nm">${i === 0 ? PX.icon("coin", 16, "inl") + " " : ""}${esc(x.name)}</span><b class="price">${x.amt}G</b></div>`).join("") : '<div class="dim">まだ寄付がありません。最初の一人になろう。</div>'}</div></div>`;
+  $("view").querySelectorAll("[data-kind]").forEach((b) => b.onclick = () => { S.exKind = b.dataset.kind; S.exName = ($("exName") || {}).value || ""; render(); });
+  if ($("exGo")) $("exGo").onclick = async () => {
+    const { data, error } = await sb.rpc("t_extend", { p_name: $("exName").value, p_kind: S.exKind || "brute" });
+    if (error) return say(error.message, true);
+    if (data.ok) { S.exName = ""; S.exKind = null; }
+    await loadAll(); say(data.msg, !data.ok);
+  };
   $("view").querySelectorAll("[data-rk]").forEach((b) => b.onclick = () => { S.rk = b.dataset.rk; render(); });
   $("view").querySelectorAll("[data-don]").forEach((b) => b.onclick = async () => {
     const { data, error } = await sb.rpc("t_donate", { p_fac: b.dataset.don, p_amt: +b.dataset.amt });
