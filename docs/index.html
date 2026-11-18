@@ -131,7 +131,7 @@ const INTRO = [
   { bg: "tower", who: "トマ", t: "塔は10階ごとに守護者が居座っている。そいつを倒さないと、先へは進めない。" },
   { bg: "tower", who: "トマ", t: "一人じゃ無理だ。だが、塔にはあんたの他にも、大勢の冒険者が挑んでる。みんなの力を合わせて倒すんだ。" },
   { bg: "trial", who: "トマ", t: "塔は、平日の昼に、毎日1回動く。出発の前に、あんたは「作戦」を決めておけ。" },
-  { bg: "trial", who: "トマ", t: "決めるのは1つだけだ。上に進むか、今いる階にとどまるか。" },
+  { bg: "trial", who: "トマ", t: "決めるのは1つだけだ。どの階に行くか。最前線に挑むもよし、突破した階で稼ぐもよし。" },
   { bg: "trial", who: "トマ", t: "あとは冒険者が勝手にやってくれる。結果は、日報で届く。決めなけりゃ、昨日と同じ作戦で動くぞ。" },
   { bg: "trial", who: "トマ", t: "倒れちまうと、その冒険で手に入れた物は、全部なくなる。薬草は命綱だ。ケチるなよ。" },
   { bg: "trial", who: "トマ", t: "戻ったら、要らない物は俺の店で売れ。その金で、もっといい武器や盾を買うんだ。" },
@@ -236,6 +236,7 @@ async function loadAll() {
   S.p = p.data; S.bag = b.data || []; S.log = (l.data || [])[0] ? l.data[0].body : null;
   S.plan = pl.data || { go: "up" };
   if (S.plan.farm_floor && S.plan.farm_floor > S.p.frontier - 1) S.plan.farm_floor = null;
+  if (S.plan.go === "stay" && !S.plan.farm_floor) S.plan.go = "up";
   S.season = se.data; S.guardians = gu.data || []; S.turn = (tu.data || [])[0] || null;
 }
 function enterTown() { $("story").classList.add("hide"); $("app").classList.remove("hide"); S.view = "town"; render(); }
@@ -265,14 +266,20 @@ const msgHtml = () => `<div class="msg ${S.err ? "err" : ""}">${esc(S.msg)}</div
 const itemName = (id) => { const d = S.defs || {}; return ((d.weapons || {})[id] || (d.shields || {})[id] || { name: id }).name; };
 function farmHtml(p, pl) {
   const fm = (S.season && S.season.farm) || null;
-  const spots = fm ? Object.entries(fm.floors).map(([f, v]) => [+f, v]).filter(([f]) => f <= p.frontier - 1).sort((a, b) => b[0] - a[0]) : [];
-  const stayF = Math.max(1, p.frontier - 1), cur = pl.farm_floor || null;
-  const btn = (val, title, sub) => `<button data-ff="${val}" class="${(cur || "") === val || (!cur && val === "") ? "on" : ""}" style="display:block;width:100%;text-align:left;margin-top:5px;padding:8px"><b>${title}</b><div class="sub">${sub}</div></button>`;
-  const rows = spots.map(([f, v]) => btn(f, `◎ ${f}階 ${esc(v.name)}`, v.items.map((it) => {
-    const miss = ((p.pity || {})[f + ":" + it.id]) || 0, rate = Math.min(fm.cap, it.base + fm.step * miss);
-    return `「${esc(itemName(it.id))}」が出る確率 ${(rate * 100).toFixed(1)}%${miss ? `(${miss}回連続ハズレ中。外すほど上がる)` : ""}`;
-  }).join("<br>"))).join("");
-  return `<div style="margin-top:10px"><b>どこで稼ぐか</b></div>${btn("", `${stayF}階(ふつう)`, "特別な出物はありません。")}${rows || '<div class="sub" style="margin-top:4px">稼ぎ場は、先に進むと見つかります。</div>'}`;
+  const hot = fm ? fm.floors : {};
+  const cur = pl.go === "stay" ? pl.farm_floor : null;
+  const chips = Array.from({ length: Math.max(0, p.frontier - 1) }, (_, i) => i + 1).map((f) =>
+    `<button data-ff="${f}" class="${cur === f ? "on" : ""}">${hot[f] ? "◎" : ""}${f}F</button>`).join("");
+  const rows = Object.entries(hot).map(([f, v]) => [+f, v]).filter(([f]) => f <= p.frontier - 1).sort((a, b) => b[0] - a[0]).map(([f, v]) => {
+    const lines = v.items.map((it) => {
+      const miss = ((p.pity || {})[f + ":" + it.id]) || 0, rate = Math.min(fm.cap, it.base + fm.step * miss);
+      return `「${esc(itemName(it.id))}」 ${(rate * 100).toFixed(1)}%${miss ? `(${miss}回連続ハズレ中)` : ""}`;
+    }).join(" ／ ");
+    return `<button data-ff="${f}" class="${cur === f ? "on" : ""}" style="display:block;width:100%;text-align:left;margin-top:5px;padding:8px"><b>◎ ${f}階 ${esc(v.name)}</b><div class="sub">${lines}。外すほど確率が上がる。</div></button>`;
+  }).join("");
+  return `<div style="margin-top:12px"><b>階を指定して稼ぐ</b><span class="dim"> 突破した階を、くり返し周回します</span></div>
+    ${chips ? `<div class="floors" style="margin-top:4px">${chips}</div>` : '<div class="sub" style="margin-top:4px">まだ突破した階がありません。</div>'}
+    ${rows ? `<div class="sub" style="margin-top:8px">◎ は、強い装備が出る稼ぎ場です。</div>${rows}` : ""}`;
 }
 function viewTown() {
   const p = S.p, pl = S.plan, se = S.season, L = lockedFloor();
@@ -284,9 +291,9 @@ function viewTown() {
     <div class="card"><h2>作戦 ― 次のターン${se && se.next_at ? "は " + new Date(se.next_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "の日時は未定"}</h2>
       <div style="font-size:18px;margin-top:4px">あなたの到達階 <b>${p.frontier}階</b></div>
       <div class="sub">${p.first_done ? "締切までは何度でも変えられます。決めなかった日は、前回と同じ作戦で動きます。" : "最初の1回だけは、今すぐ出発して結果を見られます。"}</div>
-      ${goBtn("up", "上に進む", g ? `守護者「${esc(g.name)}」に挑む。残りHP ${g.hp}/${g.mhp}。全員のダメージが合算されます。` : `${p.frontier}階に挑む。うまくいけば、到達階が上がります。危険も大きい。`)}
-      ${goBtn("stay", "階にとどまる", `安全に稼ぐ。得られる物は少なめですが、倒れにくい。突破した階の中から、稼ぎ場(強い装備が出る階)も選べます。`)}
-      ${pl.go === "stay" ? farmHtml(p, pl) : ""}
+      ${goBtn("up", g ? `最前線に挑む ― 守護者「${esc(g.name)}」` : `最前線に挑む ― ${p.frontier}階`, g ? `残りHP ${g.hp}/${g.mhp}。全員のダメージが合算されます。` : `うまくいけば、到達階が上がります。危険も大きい。`)}
+      ${farmHtml(p, pl)}
+      <div class="sub" style="margin-top:8px">今の作戦: <b>${pl.go === "stay" && pl.farm_floor ? pl.farm_floor + "階で稼ぐ" : "最前線に挑む"}</b></div>
       <div style="margin-top:12px"><button class="primary" id="go">${p.first_done ? "この作戦で決定" : "最初の冒険に出発"}</button></div>${msgHtml()}</div>
     ${S.log ? `<div class="card"><h2>前回の結果</h2>${logSummary(S.log)}${(S.log.recap || []).length ? `<div class="log">${S.log.recap.map((l) => `<div>${esc(l)}</div>`).join("")}</div>` : ""}</div>` : ""}
     <div class="card"><h2>アカウント</h2>
@@ -297,10 +304,10 @@ function viewTown() {
       <div class="sub">「最初からやり直す」を押すと、このキャラクターのデータが消えて、オープニングからになります。</div></div>`;
   const v = $("view");
   v.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => { pl.go = b.dataset.go; render(); });
-  v.querySelectorAll("[data-ff]").forEach((b) => b.onclick = () => { pl.farm_floor = b.dataset.ff ? +b.dataset.ff : null; render(); });
+  v.querySelectorAll("[data-ff]").forEach((b) => b.onclick = () => { pl.go = "stay"; pl.farm_floor = +b.dataset.ff; render(); });
   $("go").onclick = async () => {
     $("go").disabled = true;
-    const { data, error } = await sb.rpc("t_plan_go", { p_go: pl.go, p_farm: pl.go === "stay" ? (pl.farm_floor || null) : null });
+    const { data, error } = await sb.rpc("t_plan_go", { p_go: pl.go, p_farm: pl.go === "stay" ? pl.farm_floor : null });
     if (error) return say(error.message, true);
     if (!data.ok) return say(data.msg, true);
     if (!p.first_done) {
