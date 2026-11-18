@@ -127,6 +127,8 @@ button.slot{background:#120b1c}.slot{width:42px;height:42px;background:#120b1c;b
 .fl .hp{width:70px;height:8px;background:#120b1c;border:2px solid #1b1226}.fl .hp i{display:block;height:100%;background:#e8604f}
 .fl .rt{font-size:11px;color:#ffe27a}
 .hot{background:linear-gradient(90deg,#f4c53422,transparent)}
+.item .nm{flex:1}
+svg.px.inl{display:inline-block;vertical-align:middle}
 .hero-bob{animation:bob .8s steps(2) infinite}@keyframes bob{50%{transform:translateY(-3px)}}
 .panel{margin-top:8px;padding:8px 10px;background:#120b1c;border:3px solid #1b1226;font-size:13px;line-height:1.6}
 /* 店 */
@@ -317,7 +319,7 @@ async function boot() {
 async function setStory(n) { await sb.from("players").update({ story: n }).eq("user_id", S.user.id); S.p.story = n; }
 async function loadAll() {
   const uid = S.user.id;
-  const [p, b, l, pl, se, gu, tu] = await Promise.all([
+  const [p, b, l, pl, se, gu, tu, tn] = await Promise.all([
     sb.from("players").select("*").eq("user_id", uid).single(),
     sb.from("bag").select("*").eq("user_id", uid).order("created_at"),
     sb.from("logs").select("*").eq("user_id", uid).order("id", { ascending: false }).limit(1),
@@ -325,7 +327,9 @@ async function loadAll() {
     sb.from("season").select("*").eq("id", 1).single(),
     sb.from("guardians").select("*").order("floor"),
     sb.from("turns").select("*").order("n", { ascending: false }).limit(1),
+    sb.rpc("t_town"),
   ]);
+  S.town = tn && tn.data ? tn.data : S.town || null;
   S.p = p.data; S.bag = b.data || []; S.log = (l.data || [])[0] ? l.data[0].body : null;
   S.plan = pl.data || { go: "up" };
   if (S.plan.farm_floor && S.plan.farm_floor > S.p.frontier - 1) S.plan.farm_floor = null;
@@ -335,7 +339,7 @@ async function loadAll() {
 function enterTown() { $("story").classList.add("hide"); $("app").classList.remove("hide"); S.view = "town"; render(); }
 
 /* ================= 画面 ================= */
-const TABS = [["town", "作戦"], ["report", "日報"], ["shop", "道具屋"], ["bag", "持ち物"]];
+const TABS = [["town", "作戦"], ["report", "日報"], ["plaza", "町"], ["shop", "道具屋"], ["bag", "持ち物"]];
 const guardianOf = (f) => (S.guardians || []).find((g) => g.floor === f);
 const lockedFloor = () => { const g = (S.guardians || []).find((g) => !g.defeated); return g ? g.floor : null; };
 
@@ -351,10 +355,10 @@ function render() {
     <div class="who"><div class="row" style="gap:6px"><b>${esc(p.name)}</b><span class="lv">Lv${lv}</span><span class="grow"></span><span class="stat">${PX.icon("coin", 18)}<b>${p.gold}</b>G</span></div>
     <div class="hpb">${segs}</div><div class="sub">あと ${nextExp(lv) - p.exp} でレベルアップ ・ HP ${maxHp(lv)}</div></div></div>
     <div class="slots">${slotHtml(w, "W")}${slotHtml(s, "S")}<span class="stat" style="margin-left:6px">${PX.icon("herb", 26)}×${p.herbs}</span><span class="grow"></span><span>攻${wAtk(w)} 防${sDef(s)}</span></div></div>`;
-  const ICON = { town: ["door", "出撃"], report: ["flag", "日報"], shop: ["coin", "道具屋"], bag: ["chest_closed", "持ち物"] };
+  const ICON = { town: ["door", "出撃"], report: ["flag", "日報"], plaza: ["inn", "町"], shop: ["coin", "道具屋"], bag: ["chest_closed", "持ち物"] };
   $("tabs").innerHTML = TABS.map(([k]) => `<button data-k="${k}" class="${S.view === k ? "on" : ""}">${PX.icon(ICON[k][0], 24)}${ICON[k][1]}</button>`).join("");
   $("tabs").querySelectorAll("button").forEach((b) => b.onclick = () => { S.view = b.dataset.k; S.msg = ""; S.result = null; S.sel = null; render(); });
-  ({ town: viewTown, report: viewReport, shop: viewShop, bag: viewBag })[S.view]();
+  ({ town: viewTown, report: viewReport, plaza: viewPlaza, shop: viewShop, bag: viewBag })[S.view]();
 }
 function say(m, err) {
   if (/Failed to fetch|NetworkError|Load failed/i.test(String(m))) m = "通信に失敗しました。電波の良い所で、もう一度押してください。(押した内容はまだ反映されていません)";
@@ -380,23 +384,28 @@ function farmHtml(p, pl) {
     ${chips ? `<div class="floors" style="margin-top:4px">${chips}</div>` : '<div class="sub" style="margin-top:4px">まだ突破した階がありません。</div>'}
     ${rows ? `<div class="sub" style="margin-top:8px">◎ は、強い装備が出る稼ぎ場です。</div>${rows}` : ""}`;
 }
+const facOf = (id) => ((S.town || {}).facilities || []).find((x) => x.id === id);
+const facLv = (id) => (facOf(id) || {}).lv || 0;
+const facName = (id) => (facOf(id) || {}).name || id;
 function towerHtml(p, pl) {
   const fm = (S.season && S.season.farm) || null, hot = fm ? fm.floors : {};
   const cur = pl.go === "stay" && pl.farm_floor ? pl.farm_floor : p.frontier;
   let rows = "";
   for (let f = p.frontier + 1; f >= 1; f--) {
     const fog = f > p.frontier, front = f === p.frontier, g = !fog ? guardianOf(f) : null, h = !fog ? hot[f] : null;
-    const sel = !fog && f === cur;
+    const need = h && h.need, locked = !!(need && Object.entries(need).some(([k, v]) => facLv(k) < v));
+    const sel = !fog && !locked && f === cur;
     let mid = "";
     if (fog) mid = "？？？";
     else if (front && g && !g.defeated) mid = `${PX.icon("dragon", 34)}<span>守護者 ${esc(g.name)}<div class="hp"><i style="width:${Math.round((g.hp / g.mhp) * 100)}%"></i></div></span>`;
     else if (front) mid = `${PX.icon("flag", 28)}<span>最前線 ― 未踏の${f}階</span>`;
+    else if (h && locked) mid = `${PX.icon("lock", 28)}<span>${esc(h.name)}<div class="rt">${Object.entries(need).map(([k, v]) => facName(k) + "Lv" + v).join("・")}で解放</div></span>`;
     else if (h) {
       const it = h.items[0], miss = ((p.pity || {})[f + ":" + it.id]) || 0, rate = Math.min(fm.cap, it.base + fm.step * miss);
       mid = `${PX.icon("chest_closed", 30, "shine")}<span>${esc(h.name)}<div class="rt">${PX.item(it.id, 16)}${esc(itemName(it.id))} ${(rate * 100).toFixed(1)}%${miss ? ` ▲${miss}連続` : ""}</div></span>`;
     } else if (g) mid = `${PX.icon("skull", 24)}<span>${esc(g.name)} 討伐済み</span>`;
     else mid = `<span class="dim">通常の階</span>`;
-    rows += `<button class="fl ${sel ? "sel" : ""} ${fog ? "fog" : ""} ${h ? "hot" : ""}" data-fl="${f}" ${fog ? "disabled" : ""}><span class="no">${fog ? "?" : f}F</span><span class="mid">${mid}</span>${sel ? `<span class="hero-bob">${PX.icon("hero", 36)}</span>` : ""}</button>`;
+    rows += `<button class="fl ${sel ? "sel" : ""} ${fog ? "fog" : ""} ${h && !locked ? "hot" : ""}" data-fl="${f}" ${fog || locked ? "disabled" : ""}><span class="no">${fog ? "?" : f}F</span><span class="mid">${mid}</span>${sel ? `<span class="hero-bob">${PX.icon("hero", 36)}</span>` : ""}</button>`;
   }
   return `<div class="roof"></div><div class="tower" id="tw">${rows}</div>`;
 }
@@ -523,15 +532,19 @@ function viewReport() {
   const quote = pp.quote && pp.quote.t ? `<div class="quote">${esc(pp.quote.t)}${pp.quote.by ? `<small>― ${esc(pp.quote.by)}</small>` : ""}</div>` : "";
   const feature = pp.feature && pp.feature.text ? `<h3>${esc(pp.feature.title || "")}</h3>${String(pp.feature.text).split(/\n+/).map((x) => `<p style="font-size:15px">${esc(x)}</p>`).join("")}` : "";
   const ad = pp.ad || { name: "道具屋トマ", text: "木の棒、あります。\n薬草は命綱。ケチるなよ。" };
+  const tw = b.town;
+  const townNews = tw && (tw.built || []).length ? `<h3>町だより</h3>${tw.built.map((x) => `<p style="font-size:15px">町の「${esc(x.name)}」が、レベル${x.lv}になった。いちばん寄付したのは${esc(x.by || "")}。</p>`).join("")}` : "";
+  const townBox = tw && (tw.facilities || []).length ? `<div class="box"><h3>町の普請</h3>${tw.facilities.map((f) => `<div>${esc(f.name)} Lv${f.lv}</div>${f.goal ? `<div class="bar"><i style="width:${Math.round((f.fund / f.goal) * 100)}%"></i></div><div class="small" style="margin-top:-3px">${f.fund} / ${f.goal}G</div>` : '<div class="small">完成</div>'}`).join("")}</div>${(tw.rank_week || []).length ? `<div class="box"><h3>寄付番付(今週)</h3><ol class="rk">${tw.rank_week.slice(0, 5).map((x) => `<li>${esc(x.name)} <span class="small">${x.amt}G</span></li>`).join("")}</ol></div>` : ""}` : "";
   const deaths = (b.deaths || []).length ? `<div class="small" style="margin-top:4px">倒れた冒険者: ${b.deaths.slice(0, 6).map((d) => `${esc(d.name)}(${d.floor}階)`).join("、")}</div>` : "";
   $("view").innerHTML = `<div class="np">
     <div class="topline"><span>第${t.n}号</span><span>${dateStr}</span><span>発行部数:塔にいる全員</span></div>
     <div class="mast"><h1>百層日報</h1><div class="en">T H E &nbsp; H Y A K U S O U &nbsp; D A I L Y</div></div><div class="rule2"></div>
     <div class="headline"><span class="kicker">${esc(pp.kicker || (t.n === 1 ? "創刊号 ・ 一面" : "一面"))}</span><h2>${esc(t.headline || "")}</h2>${pp.sub ? `<div class="sub">${esc(pp.sub)}</div>` : ""}</div>
-    <div class="cols"><div class="main">${mainHtml}${quote}${picks}${feature}${cont}</div>
+    <div class="cols"><div class="main">${mainHtml}${quote}${picks}${townNews}${feature}${cont}</div>
       <div class="side">
         <div class="box"><h3>本日の最前線</h3><table><tr><th>到達階</th><th>冒険者</th></tr>${dist || '<tr><td colspan="2">動きなし</td></tr>'}</table></div>
         <div class="box"><h3>守護者情報</h3>${gHtml}</div>
+        ${townBox}
         <div class="ad"><b>${esc(ad.name)}</b>${String(ad.text || "").split(/\n/).map(esc).join("<br>")}</div>
         <div class="box"><h3>到達階ランキング</h3><ol class="rk">${top.slice(0, 10).map((x) => `<li>${esc(x.name)} <span class="small">${x.frontier}階${x.bot ? "" : ""}</span></li>`).join("")}</ol></div>
         <div class="box"><h3>けさの塔</h3><div class="small">冒険者:${(b.players || 0) + (b.bots || 0)}人<br>探索:${b.dives || 0}回 ・ 守護者戦:${b.guardian_fights || 0}回<br>倒れた人:${(b.deaths || []).length}人</div>${deaths}</div>
@@ -540,6 +553,38 @@ function viewReport() {
       <div><h3>編集後記</h3><p>${esc(pp.afterword || "塔はまだ、始まったばかり。明日の見出しになる名前を、私たちはまだ知らない。")}</p></div></div>
     <div class="foot"><b>次の号は、${S.season && S.season.next_at ? new Date(S.season.next_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "未定"}。</b> あなたの作戦が、明日の見出しを決める。</div>
   </div>`;
+}
+
+
+const EFFECT = {
+  watch: (f) => { const fl = ((S.season && S.season.farm && S.season.farm.floors) || {}); const lines = Object.entries(fl).filter(([, v]) => v.need && v.need.watch).sort((a, b) => a[1].need.watch - b[1].need.watch).map(([k, v]) => `Lv${v.need.watch}:${k}階「${esc(v.name)}」を解放`); return lines.join(" / "); },
+  inn: () => "完成すると、毎ターン、薬草がLvの数だけ差し入れされる(上限まで)",
+};
+function viewPlaza() {
+  const t = S.town || { facilities: [], rank_total: [], rank_week: [], mine: {} }, p = S.p;
+  const rk = S.rk || "week", list = (rk === "week" ? t.rank_week : t.rank_total) || [];
+  const cards = (t.facilities || []).map((f) => {
+    const done = f.goal == null, rem = done ? 0 : f.goal - f.fund, pct = done ? 100 : Math.round((f.fund / f.goal) * 100);
+    const amts = [10, 50, 100].map((a) => `<button data-don="${f.id}" data-amt="${a}" ${done || p.gold < Math.min(a, rem) ? "disabled" : ""}>${a}G</button>`).join("");
+    const all = `<button data-don="${f.id}" data-amt="${Math.min(p.gold, rem)}" ${done || p.gold < 1 ? "disabled" : ""}>ぜんぶ</button>`;
+    return `<div class="card"><div class="row" style="flex-wrap:nowrap">${PX.icon(f.lv > 0 ? f.id : "site", 64)}
+      <div class="grow"><b>${esc(f.name)}</b> <span class="lv">Lv${f.lv}</span>${f.lv === 0 ? ' <span class="tag">建設中</span>' : ""}
+      <div class="sub">${esc((EFFECT[f.id] || (() => ""))(f))}</div></div></div>
+      ${done ? '<div class="panel">これ以上は建てられません。みんなのおかげで、完成しています。</div>' : `<div class="bar" style="margin:8px 0 2px"><i style="width:${pct}%"></i></div><div class="sub">Lv${f.lv + 1}まで ${f.fund} / ${f.goal}G(あと${rem}G)</div>
+      <div class="row" style="margin-top:6px">${amts}${all}</div>`}
+      ${(f.plaques || []).length ? `<div class="sub" style="margin-top:6px">${(f.plaques || []).map((q) => `銘板 Lv${q.lv}: ${esc(q.name)}`).join(" ／ ")}</div>` : ""}</div>`;
+  }).join("");
+  $("view").innerHTML = `<div class="card"><h2>町の広場 ― みんなで育てる</h2>${msgHtml()}
+      <div class="sub">寄付したお金は、町の建設に使われる。完成すると、全員が恩恵を受ける。いちばん寄付した人の名前は、銘板に残る。あなたの寄付: 累計 ${(t.mine || {}).total || 0}G / 今週 ${(t.mine || {}).week || 0}G</div></div>
+    ${cards || '<div class="card dim">町の準備中です。</div>'}
+    <div class="card"><h2>寄付番付</h2><div class="row"><button data-rk="week" class="${rk === "week" ? "on" : ""}">今週</button><button data-rk="total" class="${rk === "total" ? "on" : ""}">累計</button></div>
+      <div style="margin-top:8px">${list.length ? list.map((x, i) => `<div class="item"><span class="lv" style="width:28px">${i + 1}</span><span class="nm">${i === 0 ? PX.icon("coin", 16, "inl") + " " : ""}${esc(x.name)}</span><b class="price">${x.amt}G</b></div>`).join("") : '<div class="dim">まだ寄付がありません。最初の一人になろう。</div>'}</div></div>`;
+  $("view").querySelectorAll("[data-rk]").forEach((b) => b.onclick = () => { S.rk = b.dataset.rk; render(); });
+  $("view").querySelectorAll("[data-don]").forEach((b) => b.onclick = async () => {
+    const { data, error } = await sb.rpc("t_donate", { p_fac: b.dataset.don, p_amt: +b.dataset.amt });
+    if (error) return say(error.message, true);
+    await loadAll(); say(data.msg, !data.ok);
+  });
 }
 
 function viewShop() {

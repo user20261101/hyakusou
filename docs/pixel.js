@@ -151,6 +151,39 @@
   };
   const SHAPES = { sword: () => sword(0), dagger: () => sword(4), axe, spear, stick, round: roundShield, kite: kiteShield };
 
+  /* ===== 町 ===== */
+  const watch = () => {
+    const g = mk();
+    rect(g, 5, 6, 10, 15, "e"); rect(g, 4, 4, 11, 5, "E");
+    [4, 6, 9, 11].forEach((x) => set(g, x, 3, "E"));
+    rect(g, 7, 0, 7, 3, "h"); rect(g, 8, 0, 10, 1, "r");
+    rect(g, 7, 8, 8, 10, "k"); rect(g, 7, 12, 8, 15, "H");
+    rect(g, 5, 11, 10, 11, "E"); set(g, 6, 7, "E"); set(g, 9, 7, "E");
+    return outline(g);
+  };
+  const inn = () => {
+    const g = mk();
+    for (let y = 2; y <= 7; y++) for (let x = 7 - (y - 2) - (y > 6 ? 0 : 0); x <= 8 + (y - 2); x++) set(g, x, y, y === 7 ? "R" : "r");
+    rect(g, 3, 8, 12, 15, "s"); rect(g, 3, 8, 12, 8, "S");
+    rect(g, 7, 11, 8, 15, "H"); rect(g, 4, 10, 5, 11, "y"); rect(g, 10, 10, 11, 11, "y");
+    rect(g, 13, 8, 13, 12, "h"); rect(g, 13, 9, 15, 10, "g");
+    return outline(g);
+  };
+  const site = () => {
+    const g = mk();
+    rect(g, 3, 6, 3, 15, "h"); rect(g, 12, 6, 12, 15, "h"); rect(g, 3, 7, 12, 7, "h"); rect(g, 3, 11, 12, 11, "h");
+    line(g, 3, 15, 12, 7, "H"); rect(g, 5, 13, 7, 15, "S"); rect(g, 9, 14, 11, 15, "S"); set(g, 6, 13, "e");
+    rect(g, 12, 2, 12, 5, "h"); rect(g, 8, 2, 12, 2, "g");
+    return outline(g);
+  };
+  const lock = () => {
+    const g = mk();
+    rect(g, 4, 7, 11, 14, "g"); rect(g, 4, 13, 11, 14, "G");
+    rect(g, 5, 3, 5, 7, "e"); rect(g, 10, 3, 10, 7, "e"); rect(g, 5, 2, 10, 2, "e");
+    rect(g, 7, 9, 8, 11, "k");
+    return outline(g);
+  };
+
   const cache = {};
   function render(grid, pal, px, cls) {
     let rects = "";
@@ -166,7 +199,7 @@
     }
     return `<svg class="px ${cls || ""}" viewBox="0 0 16 16" width="${px}" height="${px}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
   }
-  const BASE = { herb, coin, chest_closed: () => chest(false), chest_open: () => chest(true), door, flag, skull, sparkle, hero, toma, dragon };
+  const BASE = { herb, coin, chest_closed: () => chest(false), chest_open: () => chest(true), door, flag, skull, sparkle, hero, toma, dragon, watch, inn, site, lock };
 
   const PX = {
     PAL,
