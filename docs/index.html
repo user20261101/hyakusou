@@ -148,6 +148,20 @@ button.slot{background:#120b1c}.slot{width:42px;height:42px;background:#120b1c;b
 .chestbox{text-align:center;font-size:12px;width:76px}
 .chestbox .pop{animation:pop .5s steps(4) both}@keyframes pop{0%{transform:translateY(8px) scale(.6);opacity:0}100%{transform:none;opacity:1}}
 .shine{animation:sh .6s steps(2) infinite}@keyframes sh{50%{opacity:.3}}
+/* 日報もドット文字に */
+.np,.np h1,.np h2,.np h3,.np p,.np td,.np th,.np li,.np .quote,.np .kicker,.np .small,.np .sub,.np .en,.np .topline,.np .foot,.np .ad{font-family:"DotGothic16","Hiragino Sans","Yu Gothic",sans-serif!important;font-weight:400!important;-webkit-font-smoothing:none;text-shadow:none}
+.np{border-radius:0;border:4px solid #1b1226;box-shadow:inset 0 0 0 2px #b9ab88,4px 4px 0 #0008;line-height:1.75}
+.np .mast h1{letter-spacing:.12em;text-shadow:3px 3px 0 #b9ab88}
+.np .headline h2{font-size:clamp(20px,5.4vw,34px);line-height:1.35;text-shadow:2px 2px 0 #d9cca9;word-break:keep-all;overflow-wrap:anywhere}
+.np .kicker{letter-spacing:.1em;border:2px solid #1b1226}
+.np .main p{text-align:left;font-size:15px;letter-spacing:.02em}
+.np .main p.lead::first-letter{font-size:2.4em;line-height:1;padding:2px 6px 0 0}
+.np h3{font-size:15px;border-bottom:3px solid var(--rule);letter-spacing:.05em}
+.np .quote{border-left:6px solid var(--accent);font-size:16px}
+.np .box{border:3px solid var(--rule);box-shadow:inset 0 0 0 1px #b9ab88}
+.np .ad{border:4px double var(--rule)}
+.np .bar{border-radius:0;height:10px}
+.np td:first-child,.np th:first-child{white-space:nowrap}
 </style>
 </head>
 <body>
